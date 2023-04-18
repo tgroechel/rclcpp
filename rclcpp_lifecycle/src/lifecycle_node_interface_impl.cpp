@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "lifecycle_node_interface_impl.hpp"
+
 #include <functional>
 #include <memory>
 #include <mutex>
@@ -24,26 +26,18 @@
 #include "lifecycle_msgs/msg/transition_event.h"  // for getting the c-typesupport
 #include "lifecycle_msgs/msg/transition_event.hpp"
 #include "lifecycle_msgs/srv/change_state.hpp"
-#include "lifecycle_msgs/srv/get_state.hpp"
 #include "lifecycle_msgs/srv/get_available_states.hpp"
 #include "lifecycle_msgs/srv/get_available_transitions.hpp"
-
-#include "rclcpp/node_interfaces/node_base_interface.hpp"
-#include "rclcpp/node_interfaces/node_services_interface.hpp"
-
-#include "rclcpp_lifecycle/node_interfaces/lifecycle_node_interface.hpp"
-
+#include "lifecycle_msgs/srv/get_state.hpp"
 #include "rcl/error_handling.h"
 #include "rcl/node.h"
-
 #include "rcl_lifecycle/rcl_lifecycle.h"
 #include "rcl_lifecycle/transition_map.h"
-
+#include "rclcpp/node_interfaces/node_base_interface.hpp"
+#include "rclcpp/node_interfaces/node_services_interface.hpp"
+#include "rclcpp_lifecycle/node_interfaces/lifecycle_node_interface.hpp"
 #include "rcutils/logging_macros.h"
-
 #include "rmw/types.h"
-
-#include "lifecycle_node_interface_impl.hpp"
 
 namespace rclcpp_lifecycle
 {
@@ -51,8 +45,7 @@ namespace rclcpp_lifecycle
 LifecycleNode::LifecycleNodeInterfaceImpl::LifecycleNodeInterfaceImpl(
   std::shared_ptr<rclcpp::node_interfaces::NodeBaseInterface> node_base_interface,
   std::shared_ptr<rclcpp::node_interfaces::NodeServicesInterface> node_services_interface)
-: node_base_interface_(node_base_interface),
-  node_services_interface_(node_services_interface)
+: node_base_interface_(node_base_interface), node_services_interface_(node_services_interface)
 {
 }
 
@@ -65,14 +58,11 @@ LifecycleNode::LifecycleNodeInterfaceImpl::~LifecycleNodeInterfaceImpl()
     ret = rcl_lifecycle_state_machine_fini(&state_machine_, node_handle);
   }
   if (ret != RCL_RET_OK) {
-    RCUTILS_LOG_FATAL_NAMED(
-      "rclcpp_lifecycle",
-      "failed to destroy rcl_state_machine");
+    RCUTILS_LOG_FATAL_NAMED("rclcpp_lifecycle", "failed to destroy rcl_state_machine");
   }
 }
 
-void
-LifecycleNode::LifecycleNodeInterfaceImpl::init(bool enable_communication_interface)
+void LifecycleNode::LifecycleNodeInterfaceImpl::init(bool enable_communication_interface)
 {
   rcl_node_t * node_handle = node_base_interface_->get_rcl_node_handle();
   const rcl_node_options_t * node_options =
@@ -90,9 +80,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::init(bool enable_communication_interf
   std::lock_guard<std::recursive_mutex> lock(state_machine_mutex_);
   state_machine_ = rcl_lifecycle_get_zero_initialized_state_machine();
   rcl_ret_t ret = rcl_lifecycle_state_machine_init(
-    &state_machine_,
-    node_handle,
-    ROSIDL_GET_MSG_TYPE_SUPPORT(lifecycle_msgs, msg, TransitionEvent),
+    &state_machine_, node_handle, ROSIDL_GET_MSG_TYPE_SUPPORT(lifecycle_msgs, msg, TransitionEvent),
     rosidl_typesupport_cpp::get_service_type_support_handle<ChangeStateSrv>(),
     rosidl_typesupport_cpp::get_service_type_support_handle<GetStateSrv>(),
     rosidl_typesupport_cpp::get_service_type_support_handle<GetAvailableStatesSrv>(),
@@ -108,39 +96,35 @@ LifecycleNode::LifecycleNodeInterfaceImpl::init(bool enable_communication_interf
   current_state_ = State(state_machine_.current_state);
 
   if (enable_communication_interface) {
-    { // change_state
+    {  // change_state
       auto cb = std::bind(
-        &LifecycleNode::LifecycleNodeInterfaceImpl::on_change_state, this,
-        std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
+        &LifecycleNode::LifecycleNodeInterfaceImpl::on_change_state, this, std::placeholders::_1,
+        std::placeholders::_2);
       rclcpp::AnyServiceCallback<ChangeStateSrv> any_cb;
       any_cb.set(std::move(cb));
 
       srv_change_state_ = std::make_shared<rclcpp::Service<ChangeStateSrv>>(
         node_base_interface_->get_shared_rcl_node_handle(),
-        &state_machine_.com_interface.srv_change_state,
-        any_cb);
+        &state_machine_.com_interface.srv_change_state, any_cb);
       node_services_interface_->add_service(
-        std::dynamic_pointer_cast<rclcpp::ServiceBase>(srv_change_state_),
-        nullptr);
+        std::dynamic_pointer_cast<rclcpp::ServiceBase>(srv_change_state_), nullptr);
     }
 
-    { // get_state
+    {  // get_state
       auto cb = std::bind(
-        &LifecycleNode::LifecycleNodeInterfaceImpl::on_get_state, this,
-        std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
+        &LifecycleNode::LifecycleNodeInterfaceImpl::on_get_state, this, std::placeholders::_1,
+        std::placeholders::_2, std::placeholders::_3);
       rclcpp::AnyServiceCallback<GetStateSrv> any_cb;
       any_cb.set(std::move(cb));
 
       srv_get_state_ = std::make_shared<rclcpp::Service<GetStateSrv>>(
         node_base_interface_->get_shared_rcl_node_handle(),
-        &state_machine_.com_interface.srv_get_state,
-        any_cb);
+        &state_machine_.com_interface.srv_get_state, any_cb);
       node_services_interface_->add_service(
-        std::dynamic_pointer_cast<rclcpp::ServiceBase>(srv_get_state_),
-        nullptr);
+        std::dynamic_pointer_cast<rclcpp::ServiceBase>(srv_get_state_), nullptr);
     }
 
-    { // get_available_states
+    {  // get_available_states
       auto cb = std::bind(
         &LifecycleNode::LifecycleNodeInterfaceImpl::on_get_available_states, this,
         std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
@@ -149,14 +133,12 @@ LifecycleNode::LifecycleNodeInterfaceImpl::init(bool enable_communication_interf
 
       srv_get_available_states_ = std::make_shared<rclcpp::Service<GetAvailableStatesSrv>>(
         node_base_interface_->get_shared_rcl_node_handle(),
-        &state_machine_.com_interface.srv_get_available_states,
-        any_cb);
+        &state_machine_.com_interface.srv_get_available_states, any_cb);
       node_services_interface_->add_service(
-        std::dynamic_pointer_cast<rclcpp::ServiceBase>(srv_get_available_states_),
-        nullptr);
+        std::dynamic_pointer_cast<rclcpp::ServiceBase>(srv_get_available_states_), nullptr);
     }
 
-    { // get_available_transitions
+    {  // get_available_transitions
       auto cb = std::bind(
         &LifecycleNode::LifecycleNodeInterfaceImpl::on_get_available_transitions, this,
         std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
@@ -166,48 +148,42 @@ LifecycleNode::LifecycleNodeInterfaceImpl::init(bool enable_communication_interf
       srv_get_available_transitions_ =
         std::make_shared<rclcpp::Service<GetAvailableTransitionsSrv>>(
         node_base_interface_->get_shared_rcl_node_handle(),
-        &state_machine_.com_interface.srv_get_available_transitions,
-        any_cb);
+        &state_machine_.com_interface.srv_get_available_transitions, any_cb);
       node_services_interface_->add_service(
-        std::dynamic_pointer_cast<rclcpp::ServiceBase>(srv_get_available_transitions_),
-        nullptr);
+        std::dynamic_pointer_cast<rclcpp::ServiceBase>(srv_get_available_transitions_), nullptr);
     }
 
-    { // get_transition_graph
+    {  // get_transition_graph
       auto cb = std::bind(
         &LifecycleNode::LifecycleNodeInterfaceImpl::on_get_transition_graph, this,
         std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
       rclcpp::AnyServiceCallback<GetAvailableTransitionsSrv> any_cb;
       any_cb.set(std::move(cb));
 
-      srv_get_transition_graph_ =
-        std::make_shared<rclcpp::Service<GetAvailableTransitionsSrv>>(
+      srv_get_transition_graph_ = std::make_shared<rclcpp::Service<GetAvailableTransitionsSrv>>(
         node_base_interface_->get_shared_rcl_node_handle(),
-        &state_machine_.com_interface.srv_get_transition_graph,
-        any_cb);
+        &state_machine_.com_interface.srv_get_transition_graph, any_cb);
       node_services_interface_->add_service(
-        std::dynamic_pointer_cast<rclcpp::ServiceBase>(srv_get_transition_graph_),
-        nullptr);
+        std::dynamic_pointer_cast<rclcpp::ServiceBase>(srv_get_transition_graph_), nullptr);
     }
   }
 }
 
-bool
-LifecycleNode::LifecycleNodeInterfaceImpl::register_callback(
+bool LifecycleNode::LifecycleNodeInterfaceImpl::register_callback(
   std::uint8_t lifecycle_transition,
-  std::function<node_interfaces::LifecycleNodeInterface::CallbackReturn(const State &)> & cb)
+  std::function<node_interfaces::LifecycleNodeInterface::CallbackReturn(const State &)> & cb,
+  bool is_async)
 {
   cb_map_[lifecycle_transition] = cb;
+  is_async_cb_map_[lifecycle_transition] = is_async;
   return true;
 }
 
-void
-LifecycleNode::LifecycleNodeInterfaceImpl::on_change_state(
+void LifecycleNode::LifecycleNodeInterfaceImpl::on_change_state(
   const std::shared_ptr<rmw_request_id_t> header,
-  const std::shared_ptr<ChangeStateSrv::Request> req,
-  std::shared_ptr<ChangeStateSrv::Response> resp)
+  const std::shared_ptr<ChangeStateSrv::Request> req)
 {
-  (void)header;
+  std::shared_ptr<ChangeStateSrv::Response> resp = std::make_shared<ChangeStateSrv::Response>();
   std::uint8_t transition_id;
   {
     std::lock_guard<std::recursive_mutex> lock(state_machine_mutex_);
@@ -223,47 +199,63 @@ LifecycleNode::LifecycleNodeInterfaceImpl::on_change_state(
     // that means if we call ros2 service call ... {transition: {label: shutdown}}
     // the id of the request is 0 (zero) whereas the id from the lookup up transition
     // can be different.
-    // the result of this is that the label takes presedence of the id.
+    // the result of this is that the label takes precedence of the id.
     if (req->transition.label.size() != 0) {
       auto rcl_transition = rcl_lifecycle_get_transition_by_label(
         state_machine_.current_state, req->transition.label.c_str());
       if (rcl_transition == nullptr) {
         resp->success = false;
+        this->srv_change_state_->send_response(*header, *resp);
         return;
       }
       transition_id = static_cast<std::uint8_t>(rcl_transition->id);
     }
   }
 
-  node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code;
-  auto ret = change_state(transition_id, cb_return_code);
-  (void) ret;
-  // TODO(karsten1987): Lifecycle msgs have to be extended to keep both returns
-  // 1. return is the actual transition
-  // 2. return is whether an error occurred or not
-  resp->success =
-    (cb_return_code == node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS);
+  auto transition_state_id =
+    rcl_lifecycle_get_transition_by_id(state_machine_.current_state, transition_id)->goal->id;
+  auto is_async_pair_it = is_async_cb_map_.find(transition_state_id);  //
+  if (is_async_pair_it != is_async_cb_map_.end() && is_async_pair_it->second) {
+    std::thread t([ = ]() {
+        node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code;
+        auto ret = change_state(transition_id, cb_return_code);
+        (void)ret;
+        // TODO(karsten1987): Lifecycle msgs have to be extended to keep both returns
+        // 1. return is the actual transition
+        // 2. return is whether an error occurred or not
+        resp->success =
+        (cb_return_code == node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS);
+        this->srv_change_state_->send_response(*header, *resp);
+      });
+    t.detach();
+  } else {
+    node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code;
+    auto ret = change_state(transition_id, cb_return_code);
+    (void)ret;
+    // TODO(karsten1987): Lifecycle msgs have to be extended to keep both returns
+    // 1. return is the actual transition
+    // 2. return is whether an error occurred or not
+    resp->success =
+      (cb_return_code == node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS);
+    this->srv_change_state_->send_response(*header, *resp);
+  }
 }
 
-void
-LifecycleNode::LifecycleNodeInterfaceImpl::on_get_state(
-  const std::shared_ptr<rmw_request_id_t> header,
-  const std::shared_ptr<GetStateSrv::Request> req,
+void LifecycleNode::LifecycleNodeInterfaceImpl::on_get_state(
+  const std::shared_ptr<rmw_request_id_t> header, const std::shared_ptr<GetStateSrv::Request> req,
   std::shared_ptr<GetStateSrv::Response> resp) const
 {
   (void)header;
   (void)req;
   std::lock_guard<std::recursive_mutex> lock(state_machine_mutex_);
   if (rcl_lifecycle_state_machine_is_initialized(&state_machine_) != RCL_RET_OK) {
-    throw std::runtime_error(
-            "Can't get state. State machine is not initialized.");
+    throw std::runtime_error("Can't get state. State machine is not initialized.");
   }
   resp->current_state.id = static_cast<uint8_t>(state_machine_.current_state->id);
   resp->current_state.label = state_machine_.current_state->label;
 }
 
-void
-LifecycleNode::LifecycleNodeInterfaceImpl::on_get_available_states(
+void LifecycleNode::LifecycleNodeInterfaceImpl::on_get_available_states(
   const std::shared_ptr<rmw_request_id_t> header,
   const std::shared_ptr<GetAvailableStatesSrv::Request> req,
   std::shared_ptr<GetAvailableStatesSrv::Response> resp) const
@@ -272,21 +264,18 @@ LifecycleNode::LifecycleNodeInterfaceImpl::on_get_available_states(
   (void)req;
   std::lock_guard<std::recursive_mutex> lock(state_machine_mutex_);
   if (rcl_lifecycle_state_machine_is_initialized(&state_machine_) != RCL_RET_OK) {
-    throw std::runtime_error(
-            "Can't get available states. State machine is not initialized.");
+    throw std::runtime_error("Can't get available states. State machine is not initialized.");
   }
 
   resp->available_states.resize(state_machine_.transition_map.states_size);
   for (unsigned int i = 0; i < state_machine_.transition_map.states_size; ++i) {
-    resp->available_states[i].id =
-      static_cast<uint8_t>(state_machine_.transition_map.states[i].id);
+    resp->available_states[i].id = static_cast<uint8_t>(state_machine_.transition_map.states[i].id);
     resp->available_states[i].label =
       static_cast<std::string>(state_machine_.transition_map.states[i].label);
   }
 }
 
-void
-LifecycleNode::LifecycleNodeInterfaceImpl::on_get_available_transitions(
+void LifecycleNode::LifecycleNodeInterfaceImpl::on_get_available_transitions(
   const std::shared_ptr<rmw_request_id_t> header,
   const std::shared_ptr<GetAvailableTransitionsSrv::Request> req,
   std::shared_ptr<GetAvailableTransitionsSrv::Response> resp) const
@@ -295,8 +284,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::on_get_available_transitions(
   (void)req;
   std::lock_guard<std::recursive_mutex> lock(state_machine_mutex_);
   if (rcl_lifecycle_state_machine_is_initialized(&state_machine_) != RCL_RET_OK) {
-    throw std::runtime_error(
-            "Can't get available transitions. State machine is not initialized.");
+    throw std::runtime_error("Can't get available transitions. State machine is not initialized.");
   }
 
   resp->available_transitions.resize(state_machine_.current_state->valid_transition_size);
@@ -313,8 +301,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::on_get_available_transitions(
   }
 }
 
-void
-LifecycleNode::LifecycleNodeInterfaceImpl::on_get_transition_graph(
+void LifecycleNode::LifecycleNodeInterfaceImpl::on_get_transition_graph(
   const std::shared_ptr<rmw_request_id_t> header,
   const std::shared_ptr<GetAvailableTransitionsSrv::Request> req,
   std::shared_ptr<GetAvailableTransitionsSrv::Response> resp) const
@@ -323,8 +310,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::on_get_transition_graph(
   (void)req;
   std::lock_guard<std::recursive_mutex> lock(state_machine_mutex_);
   if (rcl_lifecycle_state_machine_is_initialized(&state_machine_) != RCL_RET_OK) {
-    throw std::runtime_error(
-            "Can't get available transitions. State machine is not initialized.");
+    throw std::runtime_error("Can't get available transitions. State machine is not initialized.");
   }
 
   resp->available_transitions.resize(state_machine_.transition_map.transitions_size);
@@ -341,14 +327,12 @@ LifecycleNode::LifecycleNodeInterfaceImpl::on_get_transition_graph(
   }
 }
 
-const State &
-LifecycleNode::LifecycleNodeInterfaceImpl::get_current_state() const
+const State & LifecycleNode::LifecycleNodeInterfaceImpl::get_current_state() const
 {
   return current_state_;
 }
 
-std::vector<State>
-LifecycleNode::LifecycleNodeInterfaceImpl::get_available_states() const
+std::vector<State> LifecycleNode::LifecycleNodeInterfaceImpl::get_available_states() const
 {
   std::vector<State> states;
   std::lock_guard<std::recursive_mutex> lock(state_machine_mutex_);
@@ -360,8 +344,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::get_available_states() const
   return states;
 }
 
-std::vector<Transition>
-LifecycleNode::LifecycleNodeInterfaceImpl::get_available_transitions() const
+std::vector<Transition> LifecycleNode::LifecycleNodeInterfaceImpl::get_available_transitions() const
 {
   std::vector<Transition> transitions;
   std::lock_guard<std::recursive_mutex> lock(state_machine_mutex_);
@@ -373,8 +356,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::get_available_transitions() const
   return transitions;
 }
 
-std::vector<Transition>
-LifecycleNode::LifecycleNodeInterfaceImpl::get_transition_graph() const
+std::vector<Transition> LifecycleNode::LifecycleNodeInterfaceImpl::get_transition_graph() const
 {
   std::vector<Transition> transitions;
   std::lock_guard<std::recursive_mutex> lock(state_machine_mutex_);
@@ -386,8 +368,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::get_transition_graph() const
   return transitions;
 }
 
-rcl_ret_t
-LifecycleNode::LifecycleNodeInterfaceImpl::change_state(
+rcl_ret_t LifecycleNode::LifecycleNodeInterfaceImpl::change_state(
   std::uint8_t transition_id,
   node_interfaces::LifecycleNodeInterface::CallbackReturn & cb_return_code)
 {
@@ -399,8 +380,8 @@ LifecycleNode::LifecycleNodeInterfaceImpl::change_state(
     std::lock_guard<std::recursive_mutex> lock(state_machine_mutex_);
     if (rcl_lifecycle_state_machine_is_initialized(&state_machine_) != RCL_RET_OK) {
       RCUTILS_LOG_ERROR(
-        "Unable to change state for state machine for %s: %s",
-        node_base_interface_->get_name(), rcl_get_error_string().str);
+        "Unable to change state for state machine for %s: %s", node_base_interface_->get_name(),
+        rcl_get_error_string().str);
       return RCL_RET_ERROR;
     }
 
@@ -408,12 +389,12 @@ LifecycleNode::LifecycleNodeInterfaceImpl::change_state(
     initial_state = State(state_machine_.current_state);
 
     if (
-      rcl_lifecycle_trigger_transition_by_id(
-        &state_machine_, transition_id, publish_update) != RCL_RET_OK)
+      rcl_lifecycle_trigger_transition_by_id(&state_machine_, transition_id, publish_update) !=
+      RCL_RET_OK)
     {
       RCUTILS_LOG_ERROR(
-        "Unable to start transition %u from current state %s: %s",
-        transition_id, state_machine_.current_state->label, rcl_get_error_string().str);
+        "Unable to start transition %u from current state %s: %s", transition_id,
+        state_machine_.current_state->label, rcl_get_error_string().str);
       rcutils_reset_error();
       return RCL_RET_ERROR;
     }
@@ -424,7 +405,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::change_state(
   current_state_ = State(state_machine_.current_state);
 
   auto get_label_for_return_code =
-    [](node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code) -> const char *{
+    [](node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code) -> const char * {
       auto cb_id = static_cast<uint8_t>(cb_return_code);
       if (cb_id == lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_SUCCESS) {
         return rcl_lifecycle_transition_success_label;
@@ -444,8 +425,8 @@ LifecycleNode::LifecycleNodeInterfaceImpl::change_state(
         &state_machine_, transition_label, publish_update) != RCL_RET_OK)
     {
       RCUTILS_LOG_ERROR(
-        "Failed to finish transition %u. Current state is now: %s (%s)",
-        transition_id, state_machine_.current_state->label, rcl_get_error_string().str);
+        "Failed to finish transition %u. Current state is now: %s (%s)", transition_id,
+        state_machine_.current_state->label, rcl_get_error_string().str);
       rcutils_reset_error();
       return RCL_RET_ERROR;
     }
@@ -464,8 +445,8 @@ LifecycleNode::LifecycleNodeInterfaceImpl::change_state(
     auto error_cb_label = get_label_for_return_code(error_cb_code);
     std::lock_guard<std::recursive_mutex> lock(state_machine_mutex_);
     if (
-      rcl_lifecycle_trigger_transition_by_label(
-        &state_machine_, error_cb_label, publish_update) != RCL_RET_OK)
+      rcl_lifecycle_trigger_transition_by_label(&state_machine_, error_cb_label, publish_update) !=
+      RCL_RET_OK)
     {
       RCUTILS_LOG_ERROR("Failed to call cleanup on error state: %s", rcl_get_error_string().str);
       rcutils_reset_error();
@@ -527,40 +508,34 @@ const State & LifecycleNode::LifecycleNodeInterfaceImpl::trigger_transition(
   return get_current_state();
 }
 
-const State &
-LifecycleNode::LifecycleNodeInterfaceImpl::trigger_transition(uint8_t transition_id)
+const State & LifecycleNode::LifecycleNodeInterfaceImpl::trigger_transition(uint8_t transition_id)
 {
   node_interfaces::LifecycleNodeInterface::CallbackReturn error;
   change_state(transition_id, error);
-  (void) error;
+  (void)error;
   return get_current_state();
 }
 
-const State &
-LifecycleNode::LifecycleNodeInterfaceImpl::trigger_transition(
-  uint8_t transition_id,
-  node_interfaces::LifecycleNodeInterface::CallbackReturn & cb_return_code)
+const State & LifecycleNode::LifecycleNodeInterfaceImpl::trigger_transition(
+  uint8_t transition_id, node_interfaces::LifecycleNodeInterface::CallbackReturn & cb_return_code)
 {
   change_state(transition_id, cb_return_code);
   return get_current_state();
 }
 
-void
-LifecycleNode::LifecycleNodeInterfaceImpl::add_managed_entity(
+void LifecycleNode::LifecycleNodeInterfaceImpl::add_managed_entity(
   std::weak_ptr<rclcpp_lifecycle::ManagedEntityInterface> managed_entity)
 {
   weak_managed_entities_.push_back(managed_entity);
 }
 
-void
-LifecycleNode::LifecycleNodeInterfaceImpl::add_timer_handle(
+void LifecycleNode::LifecycleNodeInterfaceImpl::add_timer_handle(
   std::shared_ptr<rclcpp::TimerBase> timer)
 {
   weak_timers_.push_back(timer);
 }
 
-void
-LifecycleNode::LifecycleNodeInterfaceImpl::on_activate() const
+void LifecycleNode::LifecycleNodeInterfaceImpl::on_activate() const
 {
   for (const auto & weak_entity : weak_managed_entities_) {
     auto entity = weak_entity.lock();
@@ -570,8 +545,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::on_activate() const
   }
 }
 
-void
-LifecycleNode::LifecycleNodeInterfaceImpl::on_deactivate() const
+void LifecycleNode::LifecycleNodeInterfaceImpl::on_deactivate() const
 {
   for (const auto & weak_entity : weak_managed_entities_) {
     auto entity = weak_entity.lock();

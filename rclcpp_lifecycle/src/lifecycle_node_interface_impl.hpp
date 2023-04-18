@@ -15,8 +15,6 @@
 #ifndef LIFECYCLE_NODE_INTERFACE_IMPL_HPP_
 #define LIFECYCLE_NODE_INTERFACE_IMPL_HPP_
 
-#include "rclcpp_lifecycle/lifecycle_node.hpp"
-
 #include <functional>
 #include <map>
 #include <memory>
@@ -24,18 +22,15 @@
 
 #include "lifecycle_msgs/msg/transition_event.hpp"
 #include "lifecycle_msgs/srv/change_state.hpp"
-#include "lifecycle_msgs/srv/get_state.hpp"
 #include "lifecycle_msgs/srv/get_available_states.hpp"
 #include "lifecycle_msgs/srv/get_available_transitions.hpp"
-
+#include "lifecycle_msgs/srv/get_state.hpp"
 #include "rcl_lifecycle/rcl_lifecycle.h"
-
 #include "rclcpp/macros.hpp"
 #include "rclcpp/node_interfaces/node_base_interface.hpp"
 #include "rclcpp/node_interfaces/node_services_interface.hpp"
-
+#include "rclcpp_lifecycle/lifecycle_node.hpp"
 #include "rclcpp_lifecycle/node_interfaces/lifecycle_node_interface.hpp"
-
 #include "rmw/types.h"
 
 namespace rclcpp_lifecycle
@@ -56,31 +51,24 @@ public:
 
   ~LifecycleNodeInterfaceImpl();
 
-  void
-  init(bool enable_communication_interface = true);
+  void init(bool enable_communication_interface = true);
 
-  bool
-  register_callback(
+  bool register_callback(
     std::uint8_t lifecycle_transition,
-    std::function<node_interfaces::LifecycleNodeInterface::CallbackReturn(const State &)> & cb);
+    std::function<node_interfaces::LifecycleNodeInterface::CallbackReturn(const State &)> & cb,
+    bool is_async);
 
-  const State &
-  get_current_state() const;
+  const State & get_current_state() const;
 
-  std::vector<State>
-  get_available_states() const;
+  std::vector<State> get_available_states() const;
 
-  std::vector<Transition>
-  get_available_transitions() const;
+  std::vector<Transition> get_available_transitions() const;
 
-  std::vector<Transition>
-  get_transition_graph() const;
+  std::vector<Transition> get_transition_graph() const;
 
-  const State &
-  trigger_transition(uint8_t transition_id);
+  const State & trigger_transition(uint8_t transition_id);
 
-  const State &
-  trigger_transition(
+  const State & trigger_transition(
     uint8_t transition_id,
     node_interfaces::LifecycleNodeInterface::CallbackReturn & cb_return_code);
 
@@ -90,76 +78,64 @@ public:
     const char * transition_label,
     node_interfaces::LifecycleNodeInterface::CallbackReturn & cb_return_code);
 
-  void
-  on_activate() const;
+  void on_activate() const;
 
-  void
-  on_deactivate() const;
+  void on_deactivate() const;
 
-  void
-  add_managed_entity(std::weak_ptr<rclcpp_lifecycle::ManagedEntityInterface> managed_entity);
+  void add_managed_entity(std::weak_ptr<rclcpp_lifecycle::ManagedEntityInterface> managed_entity);
 
-  void
-  add_timer_handle(std::shared_ptr<rclcpp::TimerBase> timer);
+  void add_timer_handle(std::shared_ptr<rclcpp::TimerBase> timer);
 
 private:
   RCLCPP_DISABLE_COPY(LifecycleNodeInterfaceImpl)
 
-  void
-  on_change_state(
+  void on_change_state(
     const std::shared_ptr<rmw_request_id_t> header,
-    const std::shared_ptr<ChangeStateSrv::Request> req,
-    std::shared_ptr<ChangeStateSrv::Response> resp);
+    const std::shared_ptr<ChangeStateSrv::Request> req);
 
-  void
-  on_get_state(
-    const std::shared_ptr<rmw_request_id_t> header,
-    const std::shared_ptr<GetStateSrv::Request> req,
+  void on_get_state(
+    const std::shared_ptr<rmw_request_id_t> header, const std::shared_ptr<GetStateSrv::Request> req,
     std::shared_ptr<GetStateSrv::Response> resp) const;
 
-  void
-  on_get_available_states(
+  void on_get_available_states(
     const std::shared_ptr<rmw_request_id_t> header,
     const std::shared_ptr<GetAvailableStatesSrv::Request> req,
     std::shared_ptr<GetAvailableStatesSrv::Response> resp) const;
 
-  void
-  on_get_available_transitions(
+  void on_get_available_transitions(
     const std::shared_ptr<rmw_request_id_t> header,
     const std::shared_ptr<GetAvailableTransitionsSrv::Request> req,
     std::shared_ptr<GetAvailableTransitionsSrv::Response> resp) const;
 
-  void
-  on_get_transition_graph(
+  void on_get_transition_graph(
     const std::shared_ptr<rmw_request_id_t> header,
     const std::shared_ptr<GetAvailableTransitionsSrv::Request> req,
     std::shared_ptr<GetAvailableTransitionsSrv::Response> resp) const;
 
-  rcl_ret_t
-  change_state(
+  rcl_ret_t change_state(
     std::uint8_t transition_id,
     node_interfaces::LifecycleNodeInterface::CallbackReturn & cb_return_code);
 
-  node_interfaces::LifecycleNodeInterface::CallbackReturn
-  execute_callback(unsigned int cb_id, const State & previous_state) const;
+  node_interfaces::LifecycleNodeInterface::CallbackReturn execute_callback(
+    unsigned int cb_id, const State & previous_state) const;
 
   mutable std::recursive_mutex state_machine_mutex_;
   rcl_lifecycle_state_machine_t state_machine_;
   State current_state_;
   std::map<
     std::uint8_t,
-    std::function<node_interfaces::LifecycleNodeInterface::CallbackReturn(const State &)>> cb_map_;
+    std::function<node_interfaces::LifecycleNodeInterface::CallbackReturn(const State &)>>
+  cb_map_;
+  std::map<uint8_t, bool> is_async_cb_map_;
 
   using NodeBasePtr = std::shared_ptr<rclcpp::node_interfaces::NodeBaseInterface>;
   using NodeServicesPtr = std::shared_ptr<rclcpp::node_interfaces::NodeServicesInterface>;
   using ChangeStateSrvPtr = std::shared_ptr<rclcpp::Service<ChangeStateSrv>>;
   using GetStateSrvPtr = std::shared_ptr<rclcpp::Service<GetStateSrv>>;
-  using GetAvailableStatesSrvPtr =
-    std::shared_ptr<rclcpp::Service<GetAvailableStatesSrv>>;
+  using GetAvailableStatesSrvPtr = std::shared_ptr<rclcpp::Service<GetAvailableStatesSrv>>;
   using GetAvailableTransitionsSrvPtr =
     std::shared_ptr<rclcpp::Service<GetAvailableTransitionsSrv>>;
-  using GetTransitionGraphSrvPtr =
-    std::shared_ptr<rclcpp::Service<GetAvailableTransitionsSrv>>;
+  using GetTransitionGraphSrvPtr = std::shared_ptr<rclcpp::Service<GetAvailableTransitionsSrv>>;
 
   NodeBasePtr node_base_interface_;
   NodeServicesPtr node_services_interface_;
