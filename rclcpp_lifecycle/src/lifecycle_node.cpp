@@ -495,50 +495,56 @@ LifecycleNode::get_node_options() const
 ////
 bool
 LifecycleNode::register_on_configure(
-  std::function<LifecycleNodeInterface::CallbackReturn(const State &)> fcn)
+  std::function<LifecycleNodeInterface::CallbackReturn(const State &)> fcn,
+  bool is_async)
 {
   return impl_->register_callback(
-    lifecycle_msgs::msg::State::TRANSITION_STATE_CONFIGURING, fcn);
+    lifecycle_msgs::msg::State::TRANSITION_STATE_CONFIGURING, fcn, is_async);
 }
 
 bool
 LifecycleNode::register_on_cleanup(
-  std::function<LifecycleNodeInterface::CallbackReturn(const State &)> fcn)
+  std::function<LifecycleNodeInterface::CallbackReturn(const State &)> fcn,
+  bool is_async)
 {
   return impl_->register_callback(
-    lifecycle_msgs::msg::State::TRANSITION_STATE_CLEANINGUP, fcn);
+    lifecycle_msgs::msg::State::TRANSITION_STATE_CLEANINGUP, fcn, is_async);
 }
 
 bool
 LifecycleNode::register_on_shutdown(
-  std::function<LifecycleNodeInterface::CallbackReturn(const State &)> fcn)
+  std::function<LifecycleNodeInterface::CallbackReturn(const State &)> fcn,
+  bool is_async)
 {
   return impl_->register_callback(
-    lifecycle_msgs::msg::State::TRANSITION_STATE_SHUTTINGDOWN, fcn);
+    lifecycle_msgs::msg::State::TRANSITION_STATE_SHUTTINGDOWN, fcn, is_async);
 }
 
 bool
 LifecycleNode::register_on_activate(
-  std::function<LifecycleNodeInterface::CallbackReturn(const State &)> fcn)
+  std::function<LifecycleNodeInterface::CallbackReturn(const State &)> fcn,
+  bool is_async)
 {
   return impl_->register_callback(
-    lifecycle_msgs::msg::State::TRANSITION_STATE_ACTIVATING, fcn);
+    lifecycle_msgs::msg::State::TRANSITION_STATE_ACTIVATING, fcn, is_async);
 }
 
 bool
 LifecycleNode::register_on_deactivate(
-  std::function<LifecycleNodeInterface::CallbackReturn(const State &)> fcn)
+  std::function<LifecycleNodeInterface::CallbackReturn(const State &)> fcn,
+  bool is_async)
 {
   return impl_->register_callback(
-    lifecycle_msgs::msg::State::TRANSITION_STATE_DEACTIVATING, fcn);
+    lifecycle_msgs::msg::State::TRANSITION_STATE_DEACTIVATING, fcn, is_async);
 }
 
 bool
 LifecycleNode::register_on_error(
-  std::function<LifecycleNodeInterface::CallbackReturn(const State &)> fcn)
+  std::function<LifecycleNodeInterface::CallbackReturn(const State &)> fcn,
+  bool is_async)
 {
   return impl_->register_callback(
-    lifecycle_msgs::msg::State::TRANSITION_STATE_ERRORPROCESSING, fcn);
+    lifecycle_msgs::msg::State::TRANSITION_STATE_ERRORPROCESSING, fcn, is_async);
 }
 
 const State &

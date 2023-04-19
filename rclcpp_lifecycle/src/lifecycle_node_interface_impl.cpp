@@ -195,19 +195,21 @@ LifecycleNode::LifecycleNodeInterfaceImpl::init(bool enable_communication_interf
 bool
 LifecycleNode::LifecycleNodeInterfaceImpl::register_callback(
   std::uint8_t lifecycle_transition,
-  std::function<node_interfaces::LifecycleNodeInterface::CallbackReturn(const State &)> & cb)
+  std::function<node_interfaces::LifecycleNodeInterface::CallbackReturn(const State &)> & cb,
+  bool is_async)
 {
   cb_map_[lifecycle_transition] = cb;
+  is_async_cb_map_[lifecycle_transition] = is_async;
   return true;
 }
 
 void
 LifecycleNode::LifecycleNodeInterfaceImpl::on_change_state(
-  const std::shared_ptr<rmw_request_id_t> header,
-  const std::shared_ptr<ChangeStateSrv::Request> req,
-  std::shared_ptr<ChangeStateSrv::Response> resp)
+    const std::shared_ptr<rclcpp::Service<ChangeStateSrv>> change_state_hdl,
+    const std::shared_ptr<rmw_request_id_t> header,
+    const std::shared_ptr<ChangeStateSrv::Request> req);
 {
-  (void)header;
+  auto resp = std::make_shared<ChangeStateSrv::Response>();
   std::uint8_t transition_id;
   {
     std::lock_guard<std::recursive_mutex> lock(state_machine_mutex_);
@@ -229,20 +231,39 @@ LifecycleNode::LifecycleNodeInterfaceImpl::on_change_state(
         state_machine_.current_state, req->transition.label.c_str());
       if (rcl_transition == nullptr) {
         resp->success = false;
+        change_state_hdl->send_response(*header, *resp);
         return;
       }
       transition_id = static_cast<std::uint8_t>(rcl_transition->id);
     }
   }
-
-  node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code;
-  auto ret = change_state(transition_id, cb_return_code);
-  (void) ret;
-  // TODO(karsten1987): Lifecycle msgs have to be extended to keep both returns
-  // 1. return is the actual transition
-  // 2. return is whether an error occurred or not
-  resp->success =
-    (cb_return_code == node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS);
+  auto transition_state_id =
+    rcl_lifecycle_get_transition_by_id(state_machine_.current_state, transition_id)->goal->id;
+  auto is_async_pair_it = is_async_cb_map_.find(transition_state_id);
+  if (is_async_pair_it != is_async_cb_map_.end() && is_async_pair_it->second) {
+    std::thread t([ = ]() {
+        node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code;
+        auto ret = change_state(transition_id, cb_return_code);
+        (void)ret;
+        // TODO(karsten1987): Lifecycle msgs have to be extended to keep both returns
+        // 1. return is the actual transition
+        // 2. return is whether an error occurred or not
+        resp->success =
+        (cb_return_code == node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS);
+        change_state_hdl->send_response(*header, *resp);
+      });
+    t.detach();
+  } else {
+    node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code;
+    auto ret = change_state(transition_id, cb_return_code);
+    (void)ret;
+    // TODO(karsten1987): Lifecycle msgs have to be extended to keep both returns
+    // 1. return is the actual transition
+    // 2. return is whether an error occurred or not
+    resp->success =
+      (cb_return_code == node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS);
+    change_state_hdl->send_response(*header, *resp);
+  }
 }
 
 void
