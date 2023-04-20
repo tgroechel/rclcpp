@@ -207,7 +207,7 @@ void
 LifecycleNode::LifecycleNodeInterfaceImpl::on_change_state(
     const std::shared_ptr<rclcpp::Service<ChangeStateSrv>> change_state_hdl,
     const std::shared_ptr<rmw_request_id_t> header,
-    const std::shared_ptr<ChangeStateSrv::Request> req);
+    const std::shared_ptr<ChangeStateSrv::Request> req)
 {
   auto resp = std::make_shared<ChangeStateSrv::Response>();
   std::uint8_t transition_id;
