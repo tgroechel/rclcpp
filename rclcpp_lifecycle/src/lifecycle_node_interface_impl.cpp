@@ -211,6 +211,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::on_change_state(
 {
   auto resp = std::make_shared<ChangeStateSrv::Response>();
   std::uint8_t transition_id;
+  std::uint8_t transition_state_id;
   {
     std::lock_guard<std::recursive_mutex> lock(state_machine_mutex_);
     if (rcl_lifecycle_state_machine_is_initialized(&state_machine_) != RCL_RET_OK) {
@@ -235,10 +236,12 @@ LifecycleNode::LifecycleNodeInterfaceImpl::on_change_state(
         return;
       }
       transition_id = static_cast<std::uint8_t>(rcl_transition->id);
+        transition_state_id =
     }
+    transition_state_id =
+     rcl_lifecycle_get_transition_by_id(state_machine_.current_state, transition_id)->goal->id;
   }
-  auto transition_state_id =
-    rcl_lifecycle_get_transition_by_id(state_machine_.current_state, transition_id)->goal->id;
+
   auto is_async_pair_it = is_async_cb_map_.find(transition_state_id);
   if (is_async_pair_it != is_async_cb_map_.end() && is_async_pair_it->second) {
     std::thread t([ = ]() {
