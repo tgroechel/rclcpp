@@ -62,8 +62,12 @@ public:
   bool
   register_callback(
     std::uint8_t lifecycle_transition,
-    std::function<node_interfaces::LifecycleNodeInterface::CallbackReturn(const State &)> & cb,
-    bool is_async);
+    std::function<node_interfaces::LifecycleNodeInterface::CallbackReturn(const State &)> & cb);
+  
+  bool
+  register_async_callback(
+    std::uint8_t lifecycle_transition,
+    std::function<void(const State &, std::shared_ptr<AsyncChangeState>)> & cb);
 
   const State &
   get_current_state() const;
@@ -163,6 +167,8 @@ private:
 
   node_interfaces::LifecycleNodeInterface::CallbackReturn
   execute_callback(unsigned int cb_id, const State & previous_state) const;
+  void
+  execute_callback_async(unsigned int cb_id, const State & previous_state, std::shared_ptr<AsyncChangeState> async_change_state);
 
   mutable std::recursive_mutex state_machine_mutex_;
   rcl_lifecycle_state_machine_t state_machine_;

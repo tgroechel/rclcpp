@@ -202,10 +202,11 @@ LifecycleNode::LifecycleNodeInterfaceImpl::register_callback(
   return true;
 }
 
+// TODO @tgroechel: can I just overload existing non-async functions with async parameter equivalents?
 bool
 LifecycleNode::LifecycleNodeInterfaceImpl::register_async_callback(
   std::uint8_t lifecycle_transition,
-  std::function<node_interfaces::LifecycleNodeInterface::CallbackReturn(const State &)> & cb)
+  std::function<void(const State &, std::shared_ptr<AsyncChangeState>)> & cb)
 {
   async_cb_map_[lifecycle_transition] = cb;
   return true;
@@ -414,7 +415,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::get_transition_graph() const
 */
 void
 LifecycleNode::LifecycleNodeInterfaceImpl::AsyncChangeState::complete_change_state(
-  CallbackReturn cb_return_code)
+  rcl_ret_t cb_return_code)
 {
   auto transition_label = get_label_for_return_code(cb_return_code);
 
@@ -448,6 +449,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::AsyncChangeState::rcl_ret_error()
   change_state_hdl->send_response(*resp, *header);
 }
 
+// TODO @tgroechel: refactor this function into change_state itself possibly
 void
 LifecycleNode::LifecycleNodeInterfaceImpl::change_state_async(
   std::uint8_t transition_id,
