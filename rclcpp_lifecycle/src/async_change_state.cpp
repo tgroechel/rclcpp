@@ -1,8 +1,6 @@
-#include "async_change_state.hpp"
+#include "rclcpp_lifecycle/async_change_service.hpp"
 
-/*
- Used for async user defined transtion callbacks
-*/
+
 namespace lifecycle_node
 {
 
@@ -29,9 +27,15 @@ AsyncChangeState::complete_change_state(
 void 
 AsyncChangeState::rcl_ret_error()
 {
-    ChangeStateSrv::Response resp;
-    resp.success = false;
-    change_state_hdl->send_response(resp, *header_);
+    send_response(false);
 }
+
+void
+AsyncChangeState::send_response(
+    bool success)
+{
+    ChangeStateSrv::Response resp;
+    resp.success = success;
+    change_state_hdl->send_response(resp, *header_);
 
 } // namespace lifecycle_node

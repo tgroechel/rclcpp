@@ -254,8 +254,10 @@ LifecycleNode::LifecycleNodeInterfaceImpl::on_change_state(
   auto is_async_pair_it = async_cb_map_.find(transition_state_id);
   if (is_async_pair_it != is_async_cb_map_.end()) {
       node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code;
-      change_state_async(transition_id, cb_return_code, std::make_shared<AsyncChangeState>(this,
-        change_state_hdl, header, resp));
+      change_state_async(transition_id, cb_return_code, std::make_shared<AsyncChangeState>(
+        std::bind(&LifecycleNodeInterfaceImpl::change_state_async_cb, this, std::placeholders::_1),
+        change_state_hdl, 
+        header));
   } else {
     node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code;
     auto ret = change_state(transition_id, cb_return_code);
@@ -410,45 +412,6 @@ LifecycleNode::LifecycleNodeInterfaceImpl::get_transition_graph() const
   return transitions;
 }
 
-/*
- Used for async user defined transtion callbacks
-*/
-void
-LifecycleNode::LifecycleNodeInterfaceImpl::AsyncChangeState::complete_change_state(
-  rcl_ret_t cb_return_code)
-{
-  auto transition_label = get_label_for_return_code(cb_return_code);
-
-  {
-    std::lock_guard<std::recursive_mutex> lock(node_impl->state_machine_mutex_);
-    if (
-      rcl_lifecycle_trigger_transition_by_label(
-        &node_impl->state_machine_, transition_label, publish_update) != RCL_RET_OK)
-    {
-      RCUTILS_LOG_ERROR(
-        "Failed to finish transition %u. Current state is now: %s (%s)",
-        transition_id, node_impl->state_machine_.current_state->label, rcl_get_error_string().str);
-      rcutils_reset_error();
-      rcl_ret_error();
-      return;
-    }
-  }
-
-  // Update the internal current_state_
-  node_impl->current_state_ = State(node_impl->state_machine_.current_state);
-
-  // TODO @tgroechel: not handling error right now for proof of concept
-  resp->success = (ret == CallbackReturn::SUCCESS);
-  change_state_hdl->send_response(*resp, *header);
-}
-
-void
-LifecycleNode::LifecycleNodeInterfaceImpl::AsyncChangeState::rcl_ret_error()
-{
-  resp->success = false;
-  change_state_hdl->send_response(*resp, *header);
-}
-
 // TODO @tgroechel: refactor this function into change_state itself possibly
 void
 LifecycleNode::LifecycleNodeInterfaceImpl::change_state_async(
@@ -490,6 +453,65 @@ LifecycleNode::LifecycleNodeInterfaceImpl::change_state_async(
   current_state_ = State(state_machine_.current_state);
 
   execute_callback_async(current_state_id, initial_state, async_change_state_ptr);
+}
+
+void
+LifecycleNode::LifecycleNodeInterfaceImpl::change_state_async_cb(
+  node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code,
+  std::shared_ptr<AsyncChangeState> async_change_state_ptr)
+{
+  auto get_label_for_return_code =
+  [](node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code) -> const char *{
+    auto cb_id = static_cast<uint8_t>(cb_return_code);
+    if (cb_id == lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_SUCCESS) {
+      return rcl_lifecycle_transition_success_label;
+    } else if (cb_id == lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_FAILURE) {
+      return rcl_lifecycle_transition_failure_label;
+    }
+    return rcl_lifecycle_transition_error_label;
+  };
+  auto transition_label = get_label_for_return_code(cb_return_code);
+
+  {
+    std::lock_guard<std::recursive_mutex> lock(state_machine_mutex_);
+    if (
+      rcl_lifecycle_trigger_transition_by_label(
+        &state_machine_, transition_label, publish_update) != RCL_RET_OK)
+    {
+      RCUTILS_LOG_ERROR(
+        "Failed to finish transition %u. Current state is now: %s (%s)",
+        transition_id, state_machine_.current_state->label, rcl_get_error_string().str);
+      rcutils_reset_error();
+      return RCL_RET_ERROR;
+    }
+    current_state_id = state_machine_.current_state->id;
+  }
+
+  // Update the internal current_state_
+  current_state_ = State(state_machine_.current_state);
+
+  // error handling ?!
+  // TODO(karsten1987): iterate over possible ret value
+  if (cb_return_code == node_interfaces::LifecycleNodeInterface::CallbackReturn::ERROR) {
+    RCUTILS_LOG_WARN("Error occurred while doing error handling.");
+
+    auto error_cb_code = execute_callback(current_state_id, initial_state);
+    auto error_cb_label = get_label_for_return_code(error_cb_code);
+    std::lock_guard<std::recursive_mutex> lock(state_machine_mutex_);
+    if (
+      rcl_lifecycle_trigger_transition_by_label(
+        &state_machine_, error_cb_label, publish_update) != RCL_RET_OK)
+    {
+      RCUTILS_LOG_ERROR("Failed to call cleanup on error state: %s", rcl_get_error_string().str);
+      rcutils_reset_error();
+      async_change_state_ptr->rcl_ret_error();
+      return;
+    }
+  }
+
+  // Update the internal current_state_
+  current_state_ = State(state_machine_.current_state);
+  async_change_state_ptr->send_response(cb_return_code == node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS);
 }
 
 rcl_ret_t

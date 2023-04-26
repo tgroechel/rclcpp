@@ -107,26 +107,6 @@ public:
   void
   add_timer_handle(std::shared_ptr<rclcpp::TimerBase> timer);
 
-  struct AsyncChangeState{
-    AsyncChangeState(
-      LifecycleNode::LifecycleNodeInterfaceImpl::LifecycleNodeInterfaceImpl * node_impl,
-      const std::shared_ptr<rclcpp::Service<ChangeStateSrv>> change_state_hdl,
-      const std::shared_ptr<rmw_request_id_t> header,
-      std::shared_ptr<ChangeStateSrv::Response> resp)
-    : node_impl(node_impl), change_state_hdl(change_state_hdl), header(header), resp(resp)
-    {}
-
-    void complete_change_state(CallbackReturn cb_return_code);
-
-    void rcl_ret_error();
-
-  private:
-    LifecycleNode::LifecycleNodeInterfaceImpl * node_impl;
-    const std::shared_ptr<rclcpp::Service<ChangeStateSrv>> change_state_hdl;
-    const std::shared_ptr<rmw_request_id_t> header;
-    std::shared_ptr<ChangeStateSrv::Response> resp;
-  };
-
 private:
   RCLCPP_DISABLE_COPY(LifecycleNodeInterfaceImpl)
 
@@ -164,6 +144,12 @@ private:
   change_state(
     std::uint8_t transition_id,
     node_interfaces::LifecycleNodeInterface::CallbackReturn & cb_return_code);
+  
+  void
+  LifecycleNode::LifecycleNodeInterfaceImpl::change_state_async_cb(
+    node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code,
+    std::shared_ptr<AsyncChangeState> async_change_state_ptr);
+
 
   node_interfaces::LifecycleNodeInterface::CallbackReturn
   execute_callback(unsigned int cb_id, const State & previous_state) const;

@@ -90,6 +90,7 @@
 #include "rclcpp_lifecycle/state.hpp"
 #include "rclcpp_lifecycle/transition.hpp"
 #include "rclcpp_lifecycle/visibility_control.h"
+#include "rclcpp_lifecycle/async_change_service.hpp"
 
 namespace rclcpp_lifecycle
 {
@@ -1005,8 +1006,12 @@ public:
   RCLCPP_LIFECYCLE_PUBLIC
   bool
   register_on_configure(
-        std::function<LifecycleNodeInterface::CallbackReturn(const State &)> fcn,
-        bool is_async = false);
+        std::function<LifecycleNodeInterface::CallbackReturn(const State &)> fcn);
+
+  RCLCPP_LIFECYCLE_PUBLIC
+  bool
+  register_on_configure_async(
+        std::function<void(const State &, std::shared_ptr<AsyncChangeState>)> fcn);
 
   /// Register the cleanup callback
   /**
@@ -1017,8 +1022,7 @@ public:
   RCLCPP_LIFECYCLE_PUBLIC
   bool
   register_on_cleanup(
-        std::function<LifecycleNodeInterface::CallbackReturn(const State &)> fcn,
-        bool is_async = false);
+        std::function<LifecycleNodeInterface::CallbackReturn(const State &)> fcn);
 
   /// Register the shutdown callback
   /**
@@ -1029,8 +1033,7 @@ public:
   RCLCPP_LIFECYCLE_PUBLIC
   bool
   register_on_shutdown(
-        std::function<LifecycleNodeInterface::CallbackReturn(const State &)> fcn,
-        bool is_async = false);
+        std::function<LifecycleNodeInterface::CallbackReturn(const State &)> fcn);
 
   /// Register the activate callback
   /**
@@ -1041,8 +1044,7 @@ public:
   RCLCPP_LIFECYCLE_PUBLIC
   bool
   register_on_activate(
-        std::function<LifecycleNodeInterface::CallbackReturn(const State &)> fcn,
-        bool is_async = false);
+        std::function<LifecycleNodeInterface::CallbackReturn(const State &)> fcn);
 
   /// Register the deactivate callback
   /**
@@ -1053,8 +1055,7 @@ public:
   RCLCPP_LIFECYCLE_PUBLIC
   bool
   register_on_deactivate(
-        std::function<LifecycleNodeInterface::CallbackReturn(const State &)> fcn,
-        bool is_async = false);
+        std::function<LifecycleNodeInterface::CallbackReturn(const State &)> fcn);
 
   /// Register the error callback
   /**
@@ -1065,8 +1066,7 @@ public:
   RCLCPP_LIFECYCLE_PUBLIC
   bool
   register_on_error(
-        std::function<LifecycleNodeInterface::CallbackReturn(const State &)> fcn,
-        bool is_async = false);
+        std::function<LifecycleNodeInterface::CallbackReturn(const State &)> fcn);
 
   RCLCPP_LIFECYCLE_PUBLIC
   CallbackReturn
