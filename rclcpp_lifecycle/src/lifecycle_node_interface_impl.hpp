@@ -103,6 +103,26 @@ public:
   void
   add_timer_handle(std::shared_ptr<rclcpp::TimerBase> timer);
 
+  struct AsyncChangeState{
+    AsyncChangeState(
+      LifecycleNode::LifecycleNodeInterfaceImpl::LifecycleNodeInterfaceImpl * node_impl,
+      const std::shared_ptr<rclcpp::Service<ChangeStateSrv>> change_state_hdl,
+      const std::shared_ptr<rmw_request_id_t> header,
+      std::shared_ptr<ChangeStateSrv::Response> resp)
+    : node_impl(node_impl), change_state_hdl(change_state_hdl), header(header), resp(resp)
+    {}
+
+    void complete_change_state(CallbackReturn cb_return_code);
+
+    void rcl_ret_error();
+
+  private:
+    LifecycleNode::LifecycleNodeInterfaceImpl * node_impl;
+    const std::shared_ptr<rclcpp::Service<ChangeStateSrv>> change_state_hdl;
+    const std::shared_ptr<rmw_request_id_t> header;
+    std::shared_ptr<ChangeStateSrv::Response> resp;
+  };
+
 private:
   RCLCPP_DISABLE_COPY(LifecycleNodeInterfaceImpl)
 
@@ -150,7 +170,9 @@ private:
   std::map<
     std::uint8_t,
     std::function<node_interfaces::LifecycleNodeInterface::CallbackReturn(const State &)>> cb_map_;
-  std::map<std::uint8_t, bool> is_async_cb_map_;
+  std::map<
+    std::uint8_t,
+    std::function<void(const State &, std::shared_ptr<AsyncChangeState>)>> async_cb_map_;
 
   using NodeBasePtr = std::shared_ptr<rclcpp::node_interfaces::NodeBaseInterface>;
   using NodeServicesPtr = std::shared_ptr<rclcpp::node_interfaces::NodeServicesInterface>;

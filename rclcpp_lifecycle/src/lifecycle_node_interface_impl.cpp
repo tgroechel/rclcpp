@@ -192,14 +192,22 @@ LifecycleNode::LifecycleNodeInterfaceImpl::init(bool enable_communication_interf
   }
 }
 
+// TODO @tgroechel: why do these return bool? It is always true
 bool
 LifecycleNode::LifecycleNodeInterfaceImpl::register_callback(
   std::uint8_t lifecycle_transition,
-  std::function<node_interfaces::LifecycleNodeInterface::CallbackReturn(const State &)> & cb,
-  bool is_async)
+  std::function<node_interfaces::LifecycleNodeInterface::CallbackReturn(const State &)> & cb)
 {
   cb_map_[lifecycle_transition] = cb;
-  is_async_cb_map_[lifecycle_transition] = is_async;
+  return true;
+}
+
+bool
+LifecycleNode::LifecycleNodeInterfaceImpl::register_async_callback(
+  std::uint8_t lifecycle_transition,
+  std::function<node_interfaces::LifecycleNodeInterface::CallbackReturn(const State &)> & cb)
+{
+  async_cb_map_[lifecycle_transition] = cb;
   return true;
 }
 
@@ -242,20 +250,11 @@ LifecycleNode::LifecycleNodeInterfaceImpl::on_change_state(
      rcl_lifecycle_get_transition_by_id(state_machine_.current_state, transition_id)->goal->id;
   }
 
-  auto is_async_pair_it = is_async_cb_map_.find(transition_state_id);
-  if (is_async_pair_it != is_async_cb_map_.end() && is_async_pair_it->second) {
-    std::thread t([ = ]() {
-        node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code;
-        auto ret = change_state(transition_id, cb_return_code);
-        (void)ret;
-        // TODO(karsten1987): Lifecycle msgs have to be extended to keep both returns
-        // 1. return is the actual transition
-        // 2. return is whether an error occurred or not
-        resp->success =
-        (cb_return_code == node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS);
-        change_state_hdl->send_response(*header, *resp);
-      });
-    t.detach();
+  auto is_async_pair_it = async_cb_map_.find(transition_state_id);
+  if (is_async_pair_it != is_async_cb_map_.end()) {
+      node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code;
+      change_state_async(transition_id, cb_return_code, std::make_shared<AsyncChangeState>(this,
+        change_state_hdl, header, resp));
   } else {
     node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code;
     auto ret = change_state(transition_id, cb_return_code);
@@ -410,6 +409,87 @@ LifecycleNode::LifecycleNodeInterfaceImpl::get_transition_graph() const
   return transitions;
 }
 
+/*
+ Used for async user defined transtion callbacks
+*/
+void
+LifecycleNode::LifecycleNodeInterfaceImpl::AsyncChangeState::complete_change_state(
+  CallbackReturn cb_return_code)
+{
+  auto transition_label = get_label_for_return_code(cb_return_code);
+
+  {
+    std::lock_guard<std::recursive_mutex> lock(node_impl->state_machine_mutex_);
+    if (
+      rcl_lifecycle_trigger_transition_by_label(
+        &node_impl->state_machine_, transition_label, publish_update) != RCL_RET_OK)
+    {
+      RCUTILS_LOG_ERROR(
+        "Failed to finish transition %u. Current state is now: %s (%s)",
+        transition_id, node_impl->state_machine_.current_state->label, rcl_get_error_string().str);
+      rcutils_reset_error();
+      rcl_ret_error();
+      return;
+    }
+  }
+
+  // Update the internal current_state_
+  node_impl->current_state_ = State(node_impl->state_machine_.current_state);
+
+  // TODO @tgroechel: not handling error right now for proof of concept
+  resp->success = (ret == CallbackReturn::SUCCESS);
+  change_state_hdl->send_response(*resp, *header);
+}
+
+void
+LifecycleNode::LifecycleNodeInterfaceImpl::AsyncChangeState::rcl_ret_error()
+{
+  resp->success = false;
+  change_state_hdl->send_response(*resp, *header);
+}
+
+void
+LifecycleNode::LifecycleNodeInterfaceImpl::change_state_async(
+  std::uint8_t transition_id,
+  node_interfaces::LifecycleNodeInterface::CallbackReturn & cb_return_code,
+  std::shared_ptr<AsyncChangeState> async_change_state_ptr)
+{
+  constexpr bool publish_update = true;
+  State initial_state;
+  unsigned int current_state_id;
+
+  {
+    std::lock_guard<std::recursive_mutex> lock(state_machine_mutex_);
+    if (rcl_lifecycle_state_machine_is_initialized(&state_machine_) != RCL_RET_OK) {
+      RCUTILS_LOG_ERROR(
+        "Unable to change state for state machine for %s: %s",
+        node_base_interface_->get_name(), rcl_get_error_string().str);
+      async_change_state_ptr->rcl_ret_error();
+      return;
+    }
+
+    // keep the initial state to pass to a transition callback
+    initial_state = State(state_machine_.current_state);
+
+    if (
+      rcl_lifecycle_trigger_transition_by_id(
+        &state_machine_, transition_id, publish_update) != RCL_RET_OK)
+    {
+      RCUTILS_LOG_ERROR(
+        "Unable to start transition %u from current state %s: %s",
+        transition_id, state_machine_.current_state->label, rcl_get_error_string().str);
+      rcutils_reset_error();
+      return RCL_RET_ERROR;
+    }
+    current_state_id = state_machine_.current_state->id;
+  }
+
+  // Update the internal current_state_
+  current_state_ = State(state_machine_.current_state);
+
+  execute_callback_async(current_state_id, initial_state, async_change_state_ptr);
+}
+
 rcl_ret_t
 LifecycleNode::LifecycleNodeInterfaceImpl::change_state(
   std::uint8_t transition_id,
@@ -525,6 +605,19 @@ LifecycleNode::LifecycleNodeInterfaceImpl::execute_callback(
     }
   }
   return cb_success;
+}
+
+void
+LifecycleNode::LifecycleNodeInterfaceImpl::execute_callback_async(
+  unsigned int cb_id, const State & previous_state, std::shared_ptr<AsyncChangeState> async_change_state_ptr)
+{
+  auto it = async_cb_map_.find(static_cast<uint8_t>(cb_id));
+  if (it != async_cb_map_.end()) {
+    auto callback = it->second;
+    // TODO @tgroechel: does not handle execptions within callback
+    callback(State(previous_state), async_change_state_ptr);
+  }
+  // TODO @tgroechel: what to do if callback is not found? Likely throw an exeception denoting it isn't registered as async
 }
 
 const State & LifecycleNode::LifecycleNodeInterfaceImpl::trigger_transition(
