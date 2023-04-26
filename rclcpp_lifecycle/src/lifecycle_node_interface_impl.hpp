@@ -147,7 +147,12 @@ private:
     node_interfaces::LifecycleNodeInterface::CallbackReturn & cb_return_code);
   
   void
-  LifecycleNode::LifecycleNodeInterfaceImpl::change_state_async_cb(
+  change_state_async(
+    std::uint8_t transition_id,
+    std::shared_ptr<AsyncChangeState> async_change_state_ptr);
+
+  void
+  change_state_async_cb(
     node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code,
     std::shared_ptr<AsyncChangeState> async_change_state_ptr);
 

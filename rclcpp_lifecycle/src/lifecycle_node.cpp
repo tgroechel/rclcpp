@@ -502,7 +502,7 @@ LifecycleNode::register_on_configure(
 }
 
 bool
-  register_on_configure_async(
+  LifecycleNode::register_on_configure_async(
     std::function<void(const State &, std::shared_ptr<AsyncChangeState>)> fcn)
 {
   return impl_->register_async_callback(

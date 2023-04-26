@@ -245,19 +245,24 @@ LifecycleNode::LifecycleNodeInterfaceImpl::on_change_state(
         return;
       }
       transition_id = static_cast<std::uint8_t>(rcl_transition->id);
-        transition_state_id =
     }
     transition_state_id =
      rcl_lifecycle_get_transition_by_id(state_machine_.current_state, transition_id)->goal->id;
   }
 
   auto is_async_pair_it = async_cb_map_.find(transition_state_id);
-  if (is_async_pair_it != is_async_cb_map_.end()) {
-      node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code;
-      change_state_async(transition_id, cb_return_code, std::make_shared<AsyncChangeState>(
-        std::bind(&LifecycleNodeInterfaceImpl::change_state_async_cb, this, std::placeholders::_1),
-        change_state_hdl, 
-        header));
+  if (is_async_pair_it != async_cb_map_.end()) {
+      change_state_async(
+        transition_id, 
+        std::make_shared<AsyncChangeState>(
+          std::bind(&LifecycleNodeInterfaceImpl::change_state_async_cb, 
+            this, 
+            std::placeholders::_1, 
+            std::placeholders::_2),
+          change_state_hdl, 
+          header)
+        );
+
   } else {
     node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code;
     auto ret = change_state(transition_id, cb_return_code);
@@ -416,7 +421,6 @@ LifecycleNode::LifecycleNodeInterfaceImpl::get_transition_graph() const
 void
 LifecycleNode::LifecycleNodeInterfaceImpl::change_state_async(
   std::uint8_t transition_id,
-  node_interfaces::LifecycleNodeInterface::CallbackReturn & cb_return_code,
   std::shared_ptr<AsyncChangeState> async_change_state_ptr)
 {
   constexpr bool publish_update = true;
@@ -444,7 +448,8 @@ LifecycleNode::LifecycleNodeInterfaceImpl::change_state_async(
         "Unable to start transition %u from current state %s: %s",
         transition_id, state_machine_.current_state->label, rcl_get_error_string().str);
       rcutils_reset_error();
-      return RCL_RET_ERROR;
+      async_change_state_ptr->rcl_ret_error();
+      return;
     }
     current_state_id = state_machine_.current_state->id;
   }
@@ -460,6 +465,10 @@ LifecycleNode::LifecycleNodeInterfaceImpl::change_state_async_cb(
   node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code,
   std::shared_ptr<AsyncChangeState> async_change_state_ptr)
 {
+  constexpr bool publish_update = true;
+  unsigned int current_state_id; // TODO @tgroechel: fix with passing over state info
+  State initial_state; // TODO @tgroechel: fix with passing over state info 
+
   auto get_label_for_return_code =
   [](node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code) -> const char *{
     auto cb_id = static_cast<uint8_t>(cb_return_code);
@@ -479,10 +488,11 @@ LifecycleNode::LifecycleNodeInterfaceImpl::change_state_async_cb(
         &state_machine_, transition_label, publish_update) != RCL_RET_OK)
     {
       RCUTILS_LOG_ERROR(
-        "Failed to finish transition %u. Current state is now: %s (%s)",
-        transition_id, state_machine_.current_state->label, rcl_get_error_string().str);
+        "Failed to finish transition TODO: fix this call. Current state is now: %s (%s)",
+        /*transition_id,*/ state_machine_.current_state->label, rcl_get_error_string().str);
       rcutils_reset_error();
-      return RCL_RET_ERROR;
+      async_change_state_ptr->rcl_ret_error();
+      return;
     }
     current_state_id = state_machine_.current_state->id;
   }
@@ -633,7 +643,9 @@ LifecycleNode::LifecycleNodeInterfaceImpl::execute_callback(
 
 void
 LifecycleNode::LifecycleNodeInterfaceImpl::execute_callback_async(
-  unsigned int cb_id, const State & previous_state, std::shared_ptr<AsyncChangeState> async_change_state_ptr)
+  unsigned int cb_id, 
+  const State & previous_state, 
+  std::shared_ptr<AsyncChangeState> async_change_state_ptr)
 {
   auto it = async_cb_map_.find(static_cast<uint8_t>(cb_id));
   if (it != async_cb_map_.end()) {
