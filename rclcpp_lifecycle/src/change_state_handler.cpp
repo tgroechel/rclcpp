@@ -3,41 +3,41 @@
 namespace rclcpp_lifecycle
 {
 
-    AsyncChangeStateHandler::AsyncChangeStateHandler(
+    ChangeStateHandler::ChangeStateHandler(
         std::function<void(node_interfaces::LifecycleNodeInterface::CallbackReturn,
-                           std::shared_ptr<AsyncChangeStateHandler>)>
+                           std::shared_ptr<ChangeStateHandler>)>
             complete_change_state_cb)
         : complete_change_state_cb_(complete_change_state_cb)
     {
     }
 
     void
-    AsyncChangeStateHandler::set_change_state_srv_hdl(const std::shared_ptr<rclcpp::Service<ChangeStateSrv>> change_state_srv_hdl)
+    ChangeStateHandler::set_change_state_srv_hdl(const std::shared_ptr<rclcpp::Service<ChangeStateSrv>> change_state_srv_hdl)
     {
         change_state_srv_hdl_ = change_state_srv_hdl;    
     }
 
     void 
-    AsyncChangeStateHandler::set_rmw_request_id_header(const std::shared_ptr<rmw_request_id_t> header)
+    ChangeStateHandler::set_rmw_request_id_header(const std::shared_ptr<rmw_request_id_t> header)
     {
         header_ = header;
     }
 
     void
-    AsyncChangeStateHandler::continue_change_state(
+    ChangeStateHandler::continue_change_state(
         node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code)
     {
         complete_change_state_cb_(cb_return_code, shared_from_this()); // TODO @tgroechel: not sure using 'this' makes sense, probably a better way
     }
 
     void
-    AsyncChangeStateHandler::rcl_ret_error()
+    ChangeStateHandler::rcl_ret_error()
     {
         _finalize_change_state(false);
     }
 
     void
-    AsyncChangeStateHandler::lifecycle_node_interface_impl_private::_finalize_change_state(
+    ChangeStateHandler::lifecycle_node_interface_impl_private::_finalize_change_state(
         bool success)
     {
         if(_is_srv_request())
@@ -51,7 +51,7 @@ namespace rclcpp_lifecycle
     }
 
     bool
-    AsyncChangeStateHandler::lifecycle_node_interface_impl_private::_is_srv_request()
+    ChangeStateHandler::lifecycle_node_interface_impl_private::_is_srv_request()
     {
         return header_ != nullptr;
     }

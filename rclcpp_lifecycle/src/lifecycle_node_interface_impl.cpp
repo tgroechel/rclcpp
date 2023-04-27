@@ -104,7 +104,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::init(bool enable_communication_interf
             std::string("Couldn't initialize state machine for node ") +
             node_base_interface_->get_name());
   }
-  async_change_state_hdl = std::make_shared<AsyncChangeStateHandler>(
+  change_state_hdl = std::make_shared<ChangeStateHandler>(
           std::bind(&LifecycleNodeInterfaceImpl::change_state_async_cb, 
             this, 
             std::placeholders::_1, 
@@ -128,7 +128,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::init(bool enable_communication_interf
       node_services_interface_->add_service(
         std::dynamic_pointer_cast<rclcpp::ServiceBase>(srv_change_state_),
         nullptr);
-      async_change_state_hdl.set_change_state_srv_hdl(srv_change_state_);
+      change_state_hdl.set_change_state_srv_hdl(srv_change_state_);
     }
 
     { // get_state
@@ -213,7 +213,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::register_callback(
 bool
 LifecycleNode::LifecycleNodeInterfaceImpl::register_async_callback(
   std::uint8_t lifecycle_transition,
-  std::function<void(const State &, std::shared_ptr<AsyncChangeStateHandler>)> & cb)
+  std::function<void(const State &, std::shared_ptr<ChangeStateHandler>)> & cb)
 {
   async_cb_map_[lifecycle_transition] = cb;
   return true;
@@ -225,7 +225,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::on_change_state(
     const std::shared_ptr<ChangeStateSrv::Request> req)
 {
   // TODO @tgroechel: develop system to reject requests while not in a primary state currently (i.e., while we are already processing a request)
-  //                  this could be a mutex, queue (unlikely), or bool... looks like this will exist within the AsyncChangeStateHandler
+  //                  this could be a mutex, queue (unlikely), or bool... looks like this will exist within the ChangeStateHandler
   auto resp = std::make_shared<ChangeStateSrv::Response>();
   std::uint8_t transition_id;
   std::uint8_t transition_state_id;
@@ -263,7 +263,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::on_change_state(
   if (is_async_pair_it != async_cb_map_.end()) {
       change_state_async(
         transition_id, 
-        std::make_shared<AsyncChangeStateHandler>(
+        std::make_shared<ChangeStateHandler>(
           std::bind(&LifecycleNodeInterfaceImpl::change_state_async_cb, 
             this, 
             std::placeholders::_1, 
@@ -432,7 +432,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::get_transition_graph() const
 void
 LifecycleNode::LifecycleNodeInterfaceImpl::change_state_async(
   std::uint8_t transition_id,
-  std::shared_ptr<AsyncChangeStateHandler> async_change_state_ptr)
+  std::shared_ptr<ChangeStateHandler> async_change_state_ptr)
 {
   constexpr bool publish_update = true;
   State initial_state;
@@ -474,7 +474,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::change_state_async(
 void
 LifecycleNode::LifecycleNodeInterfaceImpl::change_state_async_cb(
   node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code,
-  std::shared_ptr<AsyncChangeStateHandler> async_change_state_ptr)
+  std::shared_ptr<ChangeStateHandler> async_change_state_ptr)
 {
   constexpr bool publish_update = true;
   unsigned int current_state_id; // TODO @tgroechel: fix with passing over state info
@@ -661,7 +661,7 @@ void
 LifecycleNode::LifecycleNodeInterfaceImpl::execute_callback_async(
   unsigned int cb_id, 
   const State & previous_state, 
-  std::shared_ptr<AsyncChangeStateHandler> async_change_state_ptr)
+  std::shared_ptr<ChangeStateHandler> async_change_state_ptr)
 {
   auto it = async_cb_map_.find(static_cast<uint8_t>(cb_id));
   if (it != async_cb_map_.end()) {
@@ -673,7 +673,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::execute_callback_async(
 }
 
 // TODO @tgroechel: how to deal with trigger transition which calls generic "change_state"/doesn't have a handler
-//                  possibly we just make the `AsyncChangeStateHandler` a member of lifecycle
+//                  possibly we just make the `ChangeStateHandler` a member of lifecycle
 const State & LifecycleNode::LifecycleNodeInterfaceImpl::trigger_transition(
   const char * transition_label)
 {
