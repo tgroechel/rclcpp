@@ -148,13 +148,11 @@ private:
   
   void
   change_state_async(
-    std::uint8_t transition_id,
-    std::shared_ptr<ChangeStateHandler> async_change_state_ptr);
+    std::uint8_t transition_id);
 
   void
   change_state_async_cb(
-    node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code,
-    std::shared_ptr<ChangeStateHandler> async_change_state_ptr);
+    node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code);
 
 
   node_interfaces::LifecycleNodeInterface::CallbackReturn

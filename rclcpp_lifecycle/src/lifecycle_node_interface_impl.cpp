@@ -421,7 +421,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::change_state_async(
       RCUTILS_LOG_ERROR(
         "Unable to change state for state machine for %s: %s",
         node_base_interface_->get_name(), rcl_get_error_string().str);
-      async_change_state_ptr->lifecycle_node_interface_impl_private::_rcl_ret_error();
+      change_state_hdl->lifecycle_node_interface_impl_private::_rcl_ret_error();
       return;
     }
 
@@ -436,7 +436,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::change_state_async(
         "Unable to start transition %u from current state %s: %s",
         transition_id, state_machine_.current_state->label, rcl_get_error_string().str);
       rcutils_reset_error();
-      async_change_state_ptr->lifecycle_node_interface_impl_private::_rcl_ret_error();
+      change_state_hdl->lifecycle_node_interface_impl_private::_rcl_ret_error();
       return;
     }
     current_state_id = state_machine_.current_state->id;
@@ -448,7 +448,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::change_state_async(
   auto is_async_pair_it = async_cb_map_.find(current_state_id); // TODO: deal with async v not
   if(is_async_pair_it != async_cb_map_.end())
   {
-    execute_async_callback(current_state_id, initial_state, async_change_state_ptr);
+    execute_async_callback(current_state_id, initial_state, change_state_hdl);
   }
   else
   {
@@ -465,6 +465,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::change_state_async_cb(
   unsigned int current_state_id; // TODO @tgroechel: fix with passing over state info
   State initial_state; // TODO @tgroechel: fix with passing over state info 
 
+  // TODO @tgroechel: pull this out into a helper, no idea why it is a lambda
   auto get_label_for_return_code =
   [](node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code) -> const char *{
     auto cb_id = static_cast<uint8_t>(cb_return_code);
@@ -484,10 +485,10 @@ LifecycleNode::LifecycleNodeInterfaceImpl::change_state_async_cb(
         &state_machine_, transition_label, publish_update) != RCL_RET_OK)
     {
       RCUTILS_LOG_ERROR(
-        "Failed to finish transition TODO @tgroechel: fix this call. Current state is now: %s (%s)",
+        "Failed to finish transition // TODO @tgroechel: fix this call. Current state is now: %s (%s)",
         /*transition_id,*/ state_machine_.current_state->label, rcl_get_error_string().str);
       rcutils_reset_error();
-      async_change_state_ptr->lifecycle_node_interface_impl_private::_rcl_ret_error();
+      change_state_hdl->lifecycle_node_interface_impl_private::_rcl_ret_error();
       return;
     }
     current_state_id = state_machine_.current_state->id;
@@ -511,7 +512,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::change_state_async_cb(
     {
       RCUTILS_LOG_ERROR("Failed to call cleanup on error state: %s", rcl_get_error_string().str);
       rcutils_reset_error();
-      async_change_state_ptr->lifecycle_node_interface_impl_private::_rcl_ret_error();
+      change_state_hdl->lifecycle_node_interface_impl_private::_rcl_ret_error();
       return;
     }
   }
@@ -519,7 +520,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::change_state_async_cb(
   // Update the internal current_state_
   current_state_ = State(state_machine_.current_state);
 
-  async_change_state_ptr->lifecycle_node_interface_impl_private::_finalize_change_state(
+  change_state_hdl->lifecycle_node_interface_impl_private::_finalize_change_state(
     cb_return_code == node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS);
 }
 
@@ -648,13 +649,13 @@ void
 LifecycleNode::LifecycleNodeInterfaceImpl::execute_async_callback(
   unsigned int cb_id, 
   const State & previous_state, 
-  std::shared_ptr<ChangeStateHandler> async_change_state_ptr)
+  std::shared_ptr<ChangeStateHandler> change_state_hdl)
 {
   auto it = async_cb_map_.find(static_cast<uint8_t>(cb_id));
   if (it != async_cb_map_.end()) {
     auto callback = it->second;
     // TODO @tgroechel: does not handle execptions within callback
-    callback(State(previous_state), async_change_state_ptr);
+    callback(State(previous_state), change_state_hdl);
   }
   // TODO @tgroechel: what to do if callback is not found? Likely throw an exeception denoting it isn't registered as async
 }
