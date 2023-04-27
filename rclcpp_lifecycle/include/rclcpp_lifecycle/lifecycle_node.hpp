@@ -1007,7 +1007,8 @@ public:
   bool
   register_on_configure(
         std::function<LifecycleNodeInterface::CallbackReturn(const State &)> fcn);
-
+  
+  // TODO @tgroechel: comments for each register_async_on_X
   RCLCPP_LIFECYCLE_PUBLIC
   bool
   register_async_on_configure(

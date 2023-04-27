@@ -14,6 +14,7 @@ namespace rclcpp_lifecycle
 /*
 *  Used for async user defined transition callbacks
 */
+// TODO @tgroechel: comments for functions same as rclcpp style
 class AsyncChangeStateHandler : public std::enable_shared_from_this<AsyncChangeStateHandler>
 {
 public:
@@ -34,6 +35,7 @@ public:
     namespace lifecycle_node_interface_impl_private
     {
     void _send_response(bool success);
+    bool _has_valid_header_and_handle();
     }
 
 private:

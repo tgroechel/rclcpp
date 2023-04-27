@@ -32,9 +32,23 @@ namespace rclcpp_lifecycle
     AsyncChangeStateHandler::lifecycle_node_interface_impl_private::_send_response(
         bool success)
     {
+        // TODO @tgroechel: what should we do in the case where it is "invalid"
+        if(!_had_valid_header_and_handle())
+        {
+            return;
+        }
+
         ChangeStateSrv::Response resp;
         resp.success = success;
         change_state_hdl_->send_response(*header_, resp);
+        header_.reset();
+        change_state_hdl_.reset();
+    }
+
+    bool
+    AsyncChangeStateHandler::lifecycle_node_interface_impl_private::_has_valid_header_and_handle()
+    {
+        return header_ && change_state_hdl_;
     }
 
 } // namespace rclcpp_lifecycle
