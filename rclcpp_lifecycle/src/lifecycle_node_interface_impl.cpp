@@ -218,6 +218,8 @@ LifecycleNode::LifecycleNodeInterfaceImpl::on_change_state(
     const std::shared_ptr<rmw_request_id_t> header,
     const std::shared_ptr<ChangeStateSrv::Request> req)
 {
+  // TODO @tgroechel: develop system to reject requests while not in a primary state currently (i.e., while we are already processing a request)
+  //                  this could be a mutex, queue (unlikeyly), or bool...
   auto resp = std::make_shared<ChangeStateSrv::Response>();
   std::uint8_t transition_id;
   std::uint8_t transition_state_id;
@@ -226,16 +228,11 @@ LifecycleNode::LifecycleNodeInterfaceImpl::on_change_state(
     if (rcl_lifecycle_state_machine_is_initialized(&state_machine_) != RCL_RET_OK) {
       throw std::runtime_error("Can't get state. State machine is not initialized.");
     }
-
-    transition_id = req->transition.id;
-    // if there's a label attached to the request,
-    // we check the transition attached to this label.
-    // we further can't compare the id of the looked up transition
-    // because ros2 service call defaults all intergers to zero.
-    // that means if we call ros2 service call ... {transition: {label: shutdown}}
-    // the id of the request is 0 (zero) whereas the id from the lookup up transition
-    // can be different.
-    // the result of this is that the label takes presedence of the id.
+    // Use transition.label over transition.id if transition.label exits
+    // label has higher precedence to the id due to ROS 2 defaulting integers to 0
+    // e.g.: srv call of {transition: {label: configure}}
+    //       transition.id    = 0           -> would be equiv to "create"
+    //       transition.label = "configure" -> id is 1, use this
     if (req->transition.label.size() != 0) {
       auto rcl_transition = rcl_lifecycle_get_transition_by_label(
         state_machine_.current_state, req->transition.label.c_str());
@@ -246,6 +243,11 @@ LifecycleNode::LifecycleNodeInterfaceImpl::on_change_state(
       }
       transition_id = static_cast<std::uint8_t>(rcl_transition->id);
     }
+    else
+    {
+      transition_id = req->transition.id; 
+    }
+
     transition_state_id =
      rcl_lifecycle_get_transition_by_id(state_machine_.current_state, transition_id)->goal->id;
   }
@@ -260,7 +262,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::on_change_state(
             this, 
             std::placeholders::_1, 
             std::placeholders::_2),
-          change_state_srv_hdl, 
+          change_state_srv_hdl, // this would need to be encapsulated here
           header)
         );
 
