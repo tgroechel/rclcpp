@@ -108,7 +108,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::init(bool enable_communication_interf
           std::bind(&LifecycleNodeInterfaceImpl::change_state_async_cb, 
             this, 
             std::placeholders::_1, 
-            std::placeholders::_2);
+            std::placeholders::_2));
           
 
   current_state_ = State(state_machine_.current_state);
@@ -256,34 +256,24 @@ LifecycleNode::LifecycleNodeInterfaceImpl::on_change_state(
 
     transition_state_id =
      rcl_lifecycle_get_transition_by_id(state_machine_.current_state, transition_id)->goal->id;
+       auto is_async_pair_it = async_cb_map_.find(transition_state_id); // checks if async
+    if (is_async_pair_it != async_cb_map_.end()) {}
   }
 
   // TODO @tgroechel: possibly disambiguate later and have a single change state
-  auto is_async_pair_it = async_cb_map_.find(transition_state_id);
-  if (is_async_pair_it != async_cb_map_.end()) {
-      change_state_async(
-        transition_id, 
-        std::make_shared<ChangeStateHandler>(
-          std::bind(&LifecycleNodeInterfaceImpl::change_state_async_cb, 
-            this, 
-            std::placeholders::_1, 
-            std::placeholders::_2),
-          change_state_srv_hdl, // this would need to be encapsulated here, actually nevermind, could just set the header here
-          header)
-        );
 
-  } else {
 
     node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code;
-    auto ret = change_state(transition_id, cb_return_code);
+    change_state(transition_id, cb_return_code);
     // TODO @tgroechel: we would actually prefer to do all the finalizing/error etc from within change_state itself and never return here
     (void)ret;
+    
+    change_state_srv_hdl->send_response(*header, *resp);
+
+    // TODO @tgroechel: need to deal with this, may as well while I'm doing a larger re-write
     // TODO(karsten1987): Lifecycle msgs have to be extended to keep both returns
     // 1. return is the actual transition
     // 2. return is whether an error occurred or not
-    resp->success =
-      (cb_return_code == node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS);
-    change_state_srv_hdl->send_response(*header, *resp);
   }
 }
 
@@ -468,6 +458,8 @@ LifecycleNode::LifecycleNodeInterfaceImpl::change_state_async(
   // Update the internal current_state_
   current_state_ = State(state_machine_.current_state);
 
+  auto is_async_pair_it = async_cb_map_.find(transition_state_id); // TODO: deal with async v not
+
   execute_callback_async(current_state_id, initial_state, async_change_state_ptr);
 }
 
@@ -587,6 +579,8 @@ LifecycleNode::LifecycleNodeInterfaceImpl::change_state(
       }
       return rcl_lifecycle_transition_error_label;
     };
+  
+  auto is_async_pair_it = async_cb_map_.find(transition_state_id); // TODO: deal with async v not
 
   cb_return_code = execute_callback(current_state_id, initial_state);
   auto transition_label = get_label_for_return_code(cb_return_code);
