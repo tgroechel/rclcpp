@@ -502,7 +502,7 @@ LifecycleNode::register_on_configure(
 }
 
 bool
-LifecycleNode::register_on_configure_async(
+LifecycleNode::register_async_on_configure(
   std::function<void(const State &, std::shared_ptr<AsyncChangeState>)> fcn)
 {
   return impl_->register_async_callback(
@@ -518,12 +518,30 @@ LifecycleNode::register_on_cleanup(
 }
 
 bool
+LifecycleNode::register_async_on_cleanup(
+  std::function<void(const State &, std::shared_ptr<AsyncChangeState>)> fcn)
+{
+  return impl_->register_async_callback(
+    lifecycle_msgs::msg::State::TRANSITION_STATE_CLEANINGUP, fcn);
+}
+
+
+bool
 LifecycleNode::register_on_shutdown(
   std::function<LifecycleNodeInterface::CallbackReturn(const State &)> fcn)
 {
   return impl_->register_callback(
     lifecycle_msgs::msg::State::TRANSITION_STATE_SHUTTINGDOWN, fcn);
 }
+
+bool
+LifecycleNode::register_async_on_shutdown(
+  std::function<void(const State &, std::shared_ptr<AsyncChangeState>)> fcn)
+{
+  return impl_->register_async_callback(
+    lifecycle_msgs::msg::State::TRANSITION_STATE_SHUTTINGDOWN, fcn);
+}
+
 
 bool
 LifecycleNode::register_on_activate(
@@ -534,7 +552,7 @@ LifecycleNode::register_on_activate(
 }
 
 bool
-LifecycleNode::register_on_activate_async(
+LifecycleNode::register_async_on_activate(
     std::function<void(const State &, std::shared_ptr<AsyncChangeState>)> fcn)
 {
   return impl_->register_async_callback(
@@ -551,12 +569,30 @@ LifecycleNode::register_on_deactivate(
 }
 
 bool
+LifecycleNode::register_async_on_deactivate(
+    std::function<void(const State &, std::shared_ptr<AsyncChangeState>)> fcn)
+{
+  return impl_->register_async_callback(
+    lifecycle_msgs::msg::State::TRANSITION_STATE_DEACTIVATING, fcn);
+}
+
+
+bool
 LifecycleNode::register_on_error(
   std::function<LifecycleNodeInterface::CallbackReturn(const State &)> fcn)
 {
   return impl_->register_callback(
     lifecycle_msgs::msg::State::TRANSITION_STATE_ERRORPROCESSING, fcn);
 }
+
+bool
+LifecycleNode::register_async_on_error(
+    std::function<void(const State &, std::shared_ptr<AsyncChangeState>)> fcn)
+{
+  return impl_->register_async_callback(
+    lifecycle_msgs::msg::State::TRANSITION_STATE_ERRORPROCESSING, fcn);
+}
+
 
 const State &
 LifecycleNode::get_current_state() const

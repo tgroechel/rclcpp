@@ -1010,7 +1010,7 @@ public:
 
   RCLCPP_LIFECYCLE_PUBLIC
   bool
-  register_on_configure_async(
+  register_async_on_configure(
         std::function<void(const State &, std::shared_ptr<AsyncChangeState>)> fcn);
 
   /// Register the cleanup callback
@@ -1024,6 +1024,11 @@ public:
   register_on_cleanup(
         std::function<LifecycleNodeInterface::CallbackReturn(const State &)> fcn);
 
+  RCLCPP_LIFECYCLE_PUBLIC
+  bool
+  register_async_on_cleanup(
+        std::function<void(const State &, std::shared_ptr<AsyncChangeState>)> fcn);
+
   /// Register the shutdown callback
   /**
    * This callback will be called when the transition to this state is triggered
@@ -1034,6 +1039,11 @@ public:
   bool
   register_on_shutdown(
         std::function<LifecycleNodeInterface::CallbackReturn(const State &)> fcn);
+  
+  RCLCPP_LIFECYCLE_PUBLIC
+  bool
+  register_async_on_shutdown(
+        std::function<void(const State &, std::shared_ptr<AsyncChangeState>)> fcn);
 
   /// Register the activate callback
   /**
@@ -1061,6 +1071,11 @@ public:
   bool
   register_on_deactivate(
         std::function<LifecycleNodeInterface::CallbackReturn(const State &)> fcn);
+  
+  RCLCPP_LIFECYCLE_PUBLIC
+  bool
+  register_async_on_shutdown(
+        std::function<void(const State &, std::shared_ptr<AsyncChangeState>)> fcn);
 
   /// Register the error callback
   /**
@@ -1072,6 +1087,11 @@ public:
   bool
   register_on_error(
         std::function<LifecycleNodeInterface::CallbackReturn(const State &)> fcn);
+  
+  RCLCPP_LIFECYCLE_PUBLIC
+  bool
+  register_async_on_error(
+        std::function<void(const State &, std::shared_ptr<AsyncChangeState>)> fcn);
 
   RCLCPP_LIFECYCLE_PUBLIC
   CallbackReturn
