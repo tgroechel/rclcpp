@@ -4,25 +4,25 @@ namespace rclcpp_lifecycle
 {
 
     ChangeStateHandler::ChangeStateHandler(
-        std::function<void(node_interfaces::LifecycleNodeInterface::CallbackReturn,
-                           std::shared_ptr<ChangeStateHandler>)>
+        std::function<void(node_interfaces::LifecycleNodeInterface::CallbackReturn)>
             complete_change_state_cb)
         : complete_change_state_cb_(complete_change_state_cb)
     {
     }
 
+    // TODO @tgroechel: likely this will be overriden as this is really 2 stages
     void
     ChangeStateHandler::continue_change_state(
         node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code)
     {
-        complete_change_state_cb_(cb_return_code, shared_from_this()); // TODO @tgroechel: not sure using 'this' makes sense, probably a better way
+        complete_change_state_cb_(cb_return_code);
     }
 
     void
     ChangeStateHandler::lifecycle_node_interface_impl_private::_set_change_state_srv_hdl(
         const std::shared_ptr<rclcpp::Service<ChangeStateSrv>> change_state_srv_hdl)
     {
-        change_state_srv_hdl_ = change_state_srv_hdl;    
+        change_state_srv_hdl_ = change_state_srv_hdl;
     }
 
     void 

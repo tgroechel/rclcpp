@@ -19,13 +19,12 @@ namespace rclcpp_lifecycle
 // TODO @tgroechel: this is likely going to handle much more given we need to deal with internal trigger
 //                  give this the capability to understand if it is doing an internal transition or not
 // TODO @tgroechel: rename this to ChangeStateHandler as this will handle all the change state requests
-class ChangeStateHandler : public std::enable_shared_from_this<ChangeStateHandler>
+class ChangeStateHandler
 {
 public:
     using ChangeStateSrv = lifecycle_msgs::srv::ChangeState;
     ChangeStateHandler(
-        std::function<void(node_interfaces::LifecycleNodeInterface::CallbackReturn,
-                        std::shared_ptr<ChangeStateHandler>)>
+        std::function<void(node_interfaces::LifecycleNodeInterface::CallbackReturn)>
             complete_change_state_cb);
 
     void continue_change_state(node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code);
@@ -44,8 +43,7 @@ public:
 
 private:
     // TODO @tgroechel: very likely we have the ability to shift this or to do something different for `on_error`
-    std::function<void(node_interfaces::LifecycleNodeInterface::CallbackReturn,
-                        std::shared_ptr<ChangeStateHandler>)>
+    std::function<void(node_interfaces::LifecycleNodeInterface::CallbackReturn)>
         complete_change_state_cb_;
     const std::shared_ptr<rclcpp::Service<ChangeStateSrv>> change_state_srv_hdl_; 
     const std::shared_ptr<rmw_request_id_t> header_;

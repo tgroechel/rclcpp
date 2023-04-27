@@ -244,8 +244,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::on_change_state(
       auto rcl_transition = rcl_lifecycle_get_transition_by_label(
         state_machine_.current_state, req->transition.label.c_str());
       if (rcl_transition == nullptr) {
-        resp->success = false;
-        change_state_srv_hdl->lifecycle_node_interface_impl_private::_finalize_change_state(*header, *resp);
+        change_state_srv_hdl->lifecycle_node_interface_impl_private::_finalize_change_state(false);
         return;
       }
       transition_id = static_cast<std::uint8_t>(rcl_transition->id);
@@ -254,27 +253,15 @@ LifecycleNode::LifecycleNodeInterfaceImpl::on_change_state(
     {
       transition_id = req->transition.id; 
     }
-
-    transition_state_id =
-     rcl_lifecycle_get_transition_by_id(state_machine_.current_state, transition_id)->goal->id;
-       auto is_async_pair_it = async_cb_map_.find(transition_state_id); // checks if async
-    if (is_async_pair_it != async_cb_map_.end()) {}
   }
 
-  // TODO @tgroechel: possibly disambiguate later and have a single change state
-
-
-    node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code;
-    change_state(transition_id, cb_return_code);
-    // TODO @tgroechel: we would actually prefer to do all the finalizing/error etc from within change_state itself and never return here
-    (void)ret;
-    
-    change_state_srv_hdl->send_response(*header, *resp);
-
-    // TODO @tgroechel: need to deal with this, may as well while I'm doing a larger re-write
-    // TODO(karsten1987): Lifecycle msgs have to be extended to keep both returns
-    // 1. return is the actual transition
-    // 2. return is whether an error occurred or not
+  node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code;
+  change_state(transition_id, cb_return_code);
+  // TODO @tgroechel: we would actually prefer to do all the finalizing/error etc from within change_state itself and never return here
+  // TODO @tgroechel: need to deal with this, may as well while I'm doing a larger re-write
+  // TODO(karsten1987): Lifecycle msgs have to be extended to keep both returns
+  // 1. return is the actual transition
+  // 2. return is whether an error occurred or not
   }
 }
 
@@ -423,7 +410,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::get_transition_graph() const
 void
 LifecycleNode::LifecycleNodeInterfaceImpl::change_state_async(
   std::uint8_t transition_id,
-  std::shared_ptr<ChangeStateHandler> async_change_state_ptr)
+  CallbackReturn &callback_return) // can we just get rid of this
 {
   constexpr bool publish_update = true;
   State initial_state;
@@ -459,15 +446,21 @@ LifecycleNode::LifecycleNodeInterfaceImpl::change_state_async(
   // Update the internal current_state_
   current_state_ = State(state_machine_.current_state);
 
-  auto is_async_pair_it = async_cb_map_.find(transition_state_id); // TODO: deal with async v not
-
-  execute_callback_async(current_state_id, initial_state, async_change_state_ptr);
+  auto is_async_pair_it = async_cb_map_.find(current_state_id); // TODO: deal with async v not
+  if(is_async_pair_it != async_cb_map_.end())
+  {
+    execute_async_callback(current_state_id, initial_state, async_change_state_ptr);
+  }
+  else
+  {
+    change_state_async_cb(execute_callback(current_state_id, initial_state));
+    // call the next function here
+  }
 }
 
 void
 LifecycleNode::LifecycleNodeInterfaceImpl::change_state_async_cb(
-  node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code,
-  std::shared_ptr<ChangeStateHandler> async_change_state_ptr)
+  node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code)
 {
   constexpr bool publish_update = true;
   unsigned int current_state_id; // TODO @tgroechel: fix with passing over state info
@@ -653,7 +646,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::execute_callback(
 }
 
 void
-LifecycleNode::LifecycleNodeInterfaceImpl::execute_callback_async(
+LifecycleNode::LifecycleNodeInterfaceImpl::execute_async_callback(
   unsigned int cb_id, 
   const State & previous_state, 
   std::shared_ptr<ChangeStateHandler> async_change_state_ptr)

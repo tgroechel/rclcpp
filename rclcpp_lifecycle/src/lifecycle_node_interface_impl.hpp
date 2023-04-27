@@ -160,7 +160,7 @@ private:
   node_interfaces::LifecycleNodeInterface::CallbackReturn
   execute_callback(unsigned int cb_id, const State & previous_state) const;
   void
-  execute_callback_async(unsigned int cb_id, const State & previous_state, std::shared_ptr<ChangeStateHandler> async_change_state);
+  execute_async_callback(unsigned int cb_id, const State & previous_state, std::shared_ptr<ChangeStateHandler> async_change_state);
 
   mutable std::recursive_mutex state_machine_mutex_;
   rcl_lifecycle_state_machine_t state_machine_;
