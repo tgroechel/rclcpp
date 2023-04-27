@@ -68,7 +68,7 @@ public:
   bool
   register_async_callback(
     std::uint8_t lifecycle_transition,
-    std::function<void(const State &, std::shared_ptr<AsyncChangeState>)> & cb);
+    std::function<void(const State &, std::shared_ptr<AsyncChangeStateHandler>)> & cb);
 
   const State &
   get_current_state() const;
@@ -149,18 +149,18 @@ private:
   void
   change_state_async(
     std::uint8_t transition_id,
-    std::shared_ptr<AsyncChangeState> async_change_state_ptr);
+    std::shared_ptr<AsyncChangeStateHandler> async_change_state_ptr);
 
   void
   change_state_async_cb(
     node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code,
-    std::shared_ptr<AsyncChangeState> async_change_state_ptr);
+    std::shared_ptr<AsyncChangeStateHandler> async_change_state_ptr);
 
 
   node_interfaces::LifecycleNodeInterface::CallbackReturn
   execute_callback(unsigned int cb_id, const State & previous_state) const;
   void
-  execute_callback_async(unsigned int cb_id, const State & previous_state, std::shared_ptr<AsyncChangeState> async_change_state);
+  execute_callback_async(unsigned int cb_id, const State & previous_state, std::shared_ptr<AsyncChangeStateHandler> async_change_state);
 
   mutable std::recursive_mutex state_machine_mutex_;
   rcl_lifecycle_state_machine_t state_machine_;
@@ -170,7 +170,7 @@ private:
     std::function<node_interfaces::LifecycleNodeInterface::CallbackReturn(const State &)>> cb_map_;
   std::map<
     std::uint8_t,
-    std::function<void(const State &, std::shared_ptr<AsyncChangeState>)>> async_cb_map_;
+    std::function<void(const State &, std::shared_ptr<AsyncChangeStateHandler>)>> async_cb_map_;
 
   using NodeBasePtr = std::shared_ptr<rclcpp::node_interfaces::NodeBaseInterface>;
   using NodeServicesPtr = std::shared_ptr<rclcpp::node_interfaces::NodeServicesInterface>;

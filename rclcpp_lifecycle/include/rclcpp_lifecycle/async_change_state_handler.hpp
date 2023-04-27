@@ -14,13 +14,13 @@ namespace rclcpp_lifecycle
 /*
 *  Used for async user defined transition callbacks
 */
-class AsyncChangeState : public std::enable_shared_from_this<AsyncChangeState>
+class AsyncChangeStateHandler : public std::enable_shared_from_this<AsyncChangeStateHandler>
 {
 public:
     using ChangeStateSrv = lifecycle_msgs::srv::ChangeState;
-    AsyncChangeState(
+    AsyncChangeStateHandler(
         std::function<void(node_interfaces::LifecycleNodeInterface::CallbackReturn,
-                        std::shared_ptr<AsyncChangeState>)>
+                        std::shared_ptr<AsyncChangeStateHandler>)>
             complete_change_state_cb,
         const std::shared_ptr<rclcpp::Service<ChangeStateSrv>> change_state_hdl,
         const std::shared_ptr<rmw_request_id_t> header);
@@ -33,7 +33,7 @@ public:
 
 private:
     std::function<void(node_interfaces::LifecycleNodeInterface::CallbackReturn,
-                        std::shared_ptr<AsyncChangeState>)>
+                        std::shared_ptr<AsyncChangeStateHandler>)>
         complete_change_state_cb_;
     const std::shared_ptr<rclcpp::Service<ChangeStateSrv>> change_state_hdl_;
     const std::shared_ptr<rmw_request_id_t> header_;

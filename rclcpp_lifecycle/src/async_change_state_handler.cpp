@@ -3,9 +3,9 @@
 namespace rclcpp_lifecycle
 {
 
-    AsyncChangeState::AsyncChangeState(
+    AsyncChangeStateHandler::AsyncChangeStateHandler(
         std::function<void(node_interfaces::LifecycleNodeInterface::CallbackReturn,
-                           std::shared_ptr<AsyncChangeState>)>
+                           std::shared_ptr<AsyncChangeStateHandler>)>
             complete_change_state_cb,
         const std::shared_ptr<rclcpp::Service<ChangeStateSrv>> change_state_hdl,
         const std::shared_ptr<rmw_request_id_t> header)
@@ -16,20 +16,20 @@ namespace rclcpp_lifecycle
     }
 
     void
-    AsyncChangeState::complete_change_state(
+    AsyncChangeStateHandler::complete_change_state(
         node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code)
     {
         complete_change_state_cb_(cb_return_code, shared_from_this()); // TODO @tgroechel: not sure using 'this' makes sense, probably a better way
     }
 
     void
-    AsyncChangeState::rcl_ret_error()
+    AsyncChangeStateHandler::rcl_ret_error()
     {
         send_response(false);
     }
 
     void
-    AsyncChangeState::send_response(
+    AsyncChangeStateHandler::send_response(
         bool success)
     {
         ChangeStateSrv::Response resp;

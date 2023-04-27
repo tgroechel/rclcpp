@@ -206,7 +206,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::register_callback(
 bool
 LifecycleNode::LifecycleNodeInterfaceImpl::register_async_callback(
   std::uint8_t lifecycle_transition,
-  std::function<void(const State &, std::shared_ptr<AsyncChangeState>)> & cb)
+  std::function<void(const State &, std::shared_ptr<AsyncChangeStateHandler>)> & cb)
 {
   async_cb_map_[lifecycle_transition] = cb;
   return true;
@@ -254,7 +254,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::on_change_state(
   if (is_async_pair_it != async_cb_map_.end()) {
       change_state_async(
         transition_id, 
-        std::make_shared<AsyncChangeState>(
+        std::make_shared<AsyncChangeStateHandler>(
           std::bind(&LifecycleNodeInterfaceImpl::change_state_async_cb, 
             this, 
             std::placeholders::_1, 
@@ -421,7 +421,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::get_transition_graph() const
 void
 LifecycleNode::LifecycleNodeInterfaceImpl::change_state_async(
   std::uint8_t transition_id,
-  std::shared_ptr<AsyncChangeState> async_change_state_ptr)
+  std::shared_ptr<AsyncChangeStateHandler> async_change_state_ptr)
 {
   constexpr bool publish_update = true;
   State initial_state;
@@ -463,7 +463,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::change_state_async(
 void
 LifecycleNode::LifecycleNodeInterfaceImpl::change_state_async_cb(
   node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code,
-  std::shared_ptr<AsyncChangeState> async_change_state_ptr)
+  std::shared_ptr<AsyncChangeStateHandler> async_change_state_ptr)
 {
   constexpr bool publish_update = true;
   unsigned int current_state_id; // TODO @tgroechel: fix with passing over state info
@@ -645,7 +645,7 @@ void
 LifecycleNode::LifecycleNodeInterfaceImpl::execute_callback_async(
   unsigned int cb_id, 
   const State & previous_state, 
-  std::shared_ptr<AsyncChangeState> async_change_state_ptr)
+  std::shared_ptr<AsyncChangeStateHandler> async_change_state_ptr)
 {
   auto it = async_cb_map_.find(static_cast<uint8_t>(cb_id));
   if (it != async_cb_map_.end()) {

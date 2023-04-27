@@ -1011,7 +1011,7 @@ public:
   RCLCPP_LIFECYCLE_PUBLIC
   bool
   register_async_on_configure(
-        std::function<void(const State &, std::shared_ptr<AsyncChangeState>)> fcn);
+        std::function<void(const State &, std::shared_ptr<AsyncChangeStateHandler>)> fcn);
 
   /// Register the cleanup callback
   /**
@@ -1027,7 +1027,7 @@ public:
   RCLCPP_LIFECYCLE_PUBLIC
   bool
   register_async_on_cleanup(
-        std::function<void(const State &, std::shared_ptr<AsyncChangeState>)> fcn);
+        std::function<void(const State &, std::shared_ptr<AsyncChangeStateHandler>)> fcn);
 
   /// Register the shutdown callback
   /**
@@ -1043,7 +1043,7 @@ public:
   RCLCPP_LIFECYCLE_PUBLIC
   bool
   register_async_on_shutdown(
-        std::function<void(const State &, std::shared_ptr<AsyncChangeState>)> fcn);
+        std::function<void(const State &, std::shared_ptr<AsyncChangeStateHandler>)> fcn);
 
   /// Register the activate callback
   /**
@@ -1059,7 +1059,7 @@ public:
   RCLCPP_LIFECYCLE_PUBLIC
   bool
   register_on_activate_async(
-        std::function<void(const State &, std::shared_ptr<AsyncChangeState>)> fcn);
+        std::function<void(const State &, std::shared_ptr<AsyncChangeStateHandler>)> fcn);
 
   /// Register the deactivate callback
   /**
@@ -1075,7 +1075,7 @@ public:
   RCLCPP_LIFECYCLE_PUBLIC
   bool
   register_async_on_shutdown(
-        std::function<void(const State &, std::shared_ptr<AsyncChangeState>)> fcn);
+        std::function<void(const State &, std::shared_ptr<AsyncChangeStateHandler>)> fcn);
 
   /// Register the error callback
   /**
@@ -1091,7 +1091,7 @@ public:
   RCLCPP_LIFECYCLE_PUBLIC
   bool
   register_async_on_error(
-        std::function<void(const State &, std::shared_ptr<AsyncChangeState>)> fcn);
+        std::function<void(const State &, std::shared_ptr<AsyncChangeStateHandler>)> fcn);
 
   RCLCPP_LIFECYCLE_PUBLIC
   CallbackReturn
