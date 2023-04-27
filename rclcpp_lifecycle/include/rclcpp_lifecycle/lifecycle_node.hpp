@@ -90,7 +90,7 @@
 #include "rclcpp_lifecycle/state.hpp"
 #include "rclcpp_lifecycle/transition.hpp"
 #include "rclcpp_lifecycle/visibility_control.h"
-#include "rclcpp_lifecycle/async_change_state.hpp"
+#include "rclcpp_lifecycle/async_change_state_handler.hpp"
 
 namespace rclcpp_lifecycle
 {
@@ -1074,7 +1074,7 @@ public:
   
   RCLCPP_LIFECYCLE_PUBLIC
   bool
-  register_async_on_shutdown(
+  register_async_on_deactivate(
         std::function<void(const State &, std::shared_ptr<AsyncChangeStateHandler>)> fcn);
 
   /// Register the error callback

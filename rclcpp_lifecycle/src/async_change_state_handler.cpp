@@ -1,4 +1,4 @@
-#include "rclcpp_lifecycle/async_change_state.hpp"
+#include "rclcpp_lifecycle/async_change_state_handler.hpp"
 
 namespace rclcpp_lifecycle
 {
@@ -25,11 +25,11 @@ namespace rclcpp_lifecycle
     void
     AsyncChangeStateHandler::rcl_ret_error()
     {
-        send_response(false);
+        _send_response(false);
     }
 
     void
-    AsyncChangeStateHandler::send_response(
+    AsyncChangeStateHandler::lifecycle_node_interface_impl_private::_send_response(
         bool success)
     {
         ChangeStateSrv::Response resp;

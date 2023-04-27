@@ -29,7 +29,12 @@ public:
 
     void rcl_ret_error();
 
-    void send_response(bool success); // TODO @tgroechel: hide this so only lifecycle impl can call?
+    // Calling outside of lifecycle_node_interface_impl is undefined behavior
+    // Avoids needing to forward declare lifecycle_node_interface_impl + friend
+    namespace lifecycle_node_interface_impl_private
+    {
+    void _send_response(bool success);
+    }
 
 private:
     std::function<void(node_interfaces::LifecycleNodeInterface::CallbackReturn,
@@ -37,5 +42,6 @@ private:
         complete_change_state_cb_;
     const std::shared_ptr<rclcpp::Service<ChangeStateSrv>> change_state_hdl_;
     const std::shared_ptr<rmw_request_id_t> header_;
+
 };
 } // namespace rclcpp_lifecycle

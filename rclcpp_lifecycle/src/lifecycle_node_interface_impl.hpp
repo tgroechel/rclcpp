@@ -35,7 +35,7 @@
 #include "rclcpp/node_interfaces/node_services_interface.hpp"
 
 #include "rclcpp_lifecycle/node_interfaces/lifecycle_node_interface.hpp"
-#include "rclcpp_lifecycle/async_change_state.hpp"
+#include "rclcpp_lifecycle/async_change_state_handler.hpp"
 
 #include "rmw/types.h"
 
