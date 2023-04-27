@@ -104,6 +104,12 @@ LifecycleNode::LifecycleNodeInterfaceImpl::init(bool enable_communication_interf
             std::string("Couldn't initialize state machine for node ") +
             node_base_interface_->get_name());
   }
+  async_change_state_hdl = std::make_shared<AsyncChangeStateHandler>(
+          std::bind(&LifecycleNodeInterfaceImpl::change_state_async_cb, 
+            this, 
+            std::placeholders::_1, 
+            std::placeholders::_2);
+          
 
   current_state_ = State(state_machine_.current_state);
 
@@ -111,7 +117,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::init(bool enable_communication_interf
     { // change_state
       auto cb = std::bind(
         &LifecycleNode::LifecycleNodeInterfaceImpl::on_change_state, this,
-        std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
+        std::placeholders::_1, std::placeholders::_2);
       rclcpp::AnyServiceCallback<ChangeStateSrv> any_cb;
       any_cb.set(std::move(cb));
 
@@ -122,6 +128,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::init(bool enable_communication_interf
       node_services_interface_->add_service(
         std::dynamic_pointer_cast<rclcpp::ServiceBase>(srv_change_state_),
         nullptr);
+      async_change_state_hdl.set_change_state_srv_hdl(srv_change_state_);
     }
 
     { // get_state
@@ -214,12 +221,11 @@ LifecycleNode::LifecycleNodeInterfaceImpl::register_async_callback(
 
 void
 LifecycleNode::LifecycleNodeInterfaceImpl::on_change_state(
-    const std::shared_ptr<rclcpp::Service<ChangeStateSrv>> change_state_srv_hdl,
     const std::shared_ptr<rmw_request_id_t> header,
     const std::shared_ptr<ChangeStateSrv::Request> req)
 {
   // TODO @tgroechel: develop system to reject requests while not in a primary state currently (i.e., while we are already processing a request)
-  //                  this could be a mutex, queue (unlikeyly), or bool...
+  //                  this could be a mutex, queue (unlikely), or bool... looks like this will exist within the AsyncChangeStateHandler
   auto resp = std::make_shared<ChangeStateSrv::Response>();
   std::uint8_t transition_id;
   std::uint8_t transition_state_id;
@@ -238,7 +244,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::on_change_state(
         state_machine_.current_state, req->transition.label.c_str());
       if (rcl_transition == nullptr) {
         resp->success = false;
-        change_state_srv_hdl->send_response(*header, *resp);
+        change_state_srv_hdl->lifecycle_node_interface_impl_private::_finalize_change_state(*header, *resp);
         return;
       }
       transition_id = static_cast<std::uint8_t>(rcl_transition->id);
@@ -262,13 +268,15 @@ LifecycleNode::LifecycleNodeInterfaceImpl::on_change_state(
             this, 
             std::placeholders::_1, 
             std::placeholders::_2),
-          change_state_srv_hdl, // this would need to be encapsulated here
+          change_state_srv_hdl, // this would need to be encapsulated here, actually nevermind, could just set the header here
           header)
         );
 
   } else {
+
     node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code;
     auto ret = change_state(transition_id, cb_return_code);
+    // TODO @tgroechel: we would actually prefer to do all the finalizing/error etc from within change_state itself and never return here
     (void)ret;
     // TODO(karsten1987): Lifecycle msgs have to be extended to keep both returns
     // 1. return is the actual transition
@@ -530,6 +538,8 @@ LifecycleNode::LifecycleNodeInterfaceImpl::change_state_async_cb(
     cb_return_code == node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS);
 }
 
+// TODO @tgroechel: NO ONE USES THE RETURN VALUE HERE
+//                  possibly remodel it as YOLO change_state call
 rcl_ret_t
 LifecycleNode::LifecycleNodeInterfaceImpl::change_state(
   std::uint8_t transition_id,

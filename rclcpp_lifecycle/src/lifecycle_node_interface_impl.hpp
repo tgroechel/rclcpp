@@ -171,6 +171,8 @@ private:
   std::map<
     std::uint8_t,
     std::function<void(const State &, std::shared_ptr<AsyncChangeStateHandler>)>> async_cb_map_;
+  
+  std::shared_ptr<AsyncChangeStateHandler> async_change_state_hdl;
 
   using NodeBasePtr = std::shared_ptr<rclcpp::node_interfaces::NodeBaseInterface>;
   using NodeServicesPtr = std::shared_ptr<rclcpp::node_interfaces::NodeServicesInterface>;

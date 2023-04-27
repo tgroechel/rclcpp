@@ -18,6 +18,7 @@ namespace rclcpp_lifecycle
 // TODO @tgroechel: comments for functions same as rclcpp style
 // TODO @tgroechel: this is likely going to handle much more given we need to deal with internal trigger
 //                  give this the capability to understand if it is doing an internal transition or not
+// TODO @tgroechel: rename this to ChangeStateHandler as this will handle all the change state requests
 class AsyncChangeStateHandler : public std::enable_shared_from_this<AsyncChangeStateHandler>
 {
 public:
@@ -25,9 +26,11 @@ public:
     AsyncChangeStateHandler(
         std::function<void(node_interfaces::LifecycleNodeInterface::CallbackReturn,
                         std::shared_ptr<AsyncChangeStateHandler>)>
-            complete_change_state_cb,
-        const std::shared_ptr<rclcpp::Service<ChangeStateSrv>> change_state_hdl,
-        const std::shared_ptr<rmw_request_id_t> header);
+            complete_change_state_cb);
+
+    AsyncChangeStateHandler::set_change_state_srv_hdl(const std::shared_ptr<rclcpp::Service<ChangeStateSrv>> change_state_srv_hdl);
+
+    AsyncChangeStateHandler::set_rmw_request_id_header(const std::shared_ptr<rmw_request_id_t> header);
 
     void continue_change_state(node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code);
 
@@ -38,14 +41,15 @@ public:
     namespace lifecycle_node_interface_impl_private
     {
     void _finalize_change_state(bool success);
-    bool _has_valid_header_and_handle();
+    bool _is_srv_request();
     }
 
 private:
+    // TODO @tgroechel: very likely we have the ability to shift this or to do something different for `on_error`
     std::function<void(node_interfaces::LifecycleNodeInterface::CallbackReturn,
                         std::shared_ptr<AsyncChangeStateHandler>)>
         complete_change_state_cb_;
-    const std::shared_ptr<rclcpp::Service<ChangeStateSrv>> change_state_hdl_;
+    const std::shared_ptr<rclcpp::Service<ChangeStateSrv>> change_state_srv_hdl_; 
     const std::shared_ptr<rmw_request_id_t> header_;
     std::atomic<bool> in_transition_{false}; // TODO @tgroechel: this can be figured out via the state_machine so possibly just reflect/use that within impl
 };
