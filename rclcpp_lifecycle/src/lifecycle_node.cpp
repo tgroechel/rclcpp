@@ -502,8 +502,8 @@ LifecycleNode::register_on_configure(
 }
 
 bool
-  LifecycleNode::register_on_configure_async(
-    std::function<void(const State &, std::shared_ptr<AsyncChangeState>)> fcn)
+LifecycleNode::register_on_configure_async(
+  std::function<void(const State &, std::shared_ptr<AsyncChangeState>)> fcn)
 {
   return impl_->register_async_callback(
     lifecycle_msgs::msg::State::TRANSITION_STATE_CONFIGURING, fcn);
@@ -532,6 +532,15 @@ LifecycleNode::register_on_activate(
   return impl_->register_callback(
     lifecycle_msgs::msg::State::TRANSITION_STATE_ACTIVATING, fcn);
 }
+
+bool
+LifecycleNode::register_on_activate_async(
+    std::function<void(const State &, std::shared_ptr<AsyncChangeState>)> fcn)
+{
+  return impl_->register_async_callback(
+    lifecycle_msgs::msg::State::TRANSITION_STATE_ACTIVATING, fcn);
+}
+
 
 bool
 LifecycleNode::register_on_deactivate(

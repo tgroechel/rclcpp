@@ -1045,6 +1045,11 @@ public:
   bool
   register_on_activate(
         std::function<LifecycleNodeInterface::CallbackReturn(const State &)> fcn);
+  
+  RCLCPP_LIFECYCLE_PUBLIC
+  bool
+  register_on_activate_async(
+        std::function<void(const State &, std::shared_ptr<AsyncChangeState>)> fcn);
 
   /// Register the deactivate callback
   /**

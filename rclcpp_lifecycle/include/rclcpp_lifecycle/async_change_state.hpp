@@ -12,8 +12,8 @@
 namespace rclcpp_lifecycle
 {
 /*
-    *  Used for async user defined transtion callbacks
-    */
+*  Used for async user defined transition callbacks
+*/
 class AsyncChangeState : public std::enable_shared_from_this<AsyncChangeState>
 {
 public:
