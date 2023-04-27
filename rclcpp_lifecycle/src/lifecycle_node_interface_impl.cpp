@@ -128,7 +128,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::init(bool enable_communication_interf
       node_services_interface_->add_service(
         std::dynamic_pointer_cast<rclcpp::ServiceBase>(srv_change_state_),
         nullptr);
-      change_state_hdl.set_change_state_srv_hdl(srv_change_state_);
+      change_state_hdl->lifecycle_node_interface_impl_private::_set_change_state_srv_hdl(srv_change_state_);
     }
 
     { // get_state
@@ -226,6 +226,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::on_change_state(
 {
   // TODO @tgroechel: develop system to reject requests while not in a primary state currently (i.e., while we are already processing a request)
   //                  this could be a mutex, queue (unlikely), or bool... looks like this will exist within the ChangeStateHandler
+  change_state_hdl->lifecycle_node_interface_impl_private::_set_rmw_request_id_header(header);
   auto resp = std::make_shared<ChangeStateSrv::Response>();
   std::uint8_t transition_id;
   std::uint8_t transition_state_id;
@@ -434,7 +435,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::change_state_async(
       RCUTILS_LOG_ERROR(
         "Unable to change state for state machine for %s: %s",
         node_base_interface_->get_name(), rcl_get_error_string().str);
-      async_change_state_ptr->rcl_ret_error();
+      async_change_state_ptr->lifecycle_node_interface_impl_private::_rcl_ret_error();
       return;
     }
 
@@ -449,7 +450,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::change_state_async(
         "Unable to start transition %u from current state %s: %s",
         transition_id, state_machine_.current_state->label, rcl_get_error_string().str);
       rcutils_reset_error();
-      async_change_state_ptr->rcl_ret_error();
+      async_change_state_ptr->lifecycle_node_interface_impl_private::_rcl_ret_error();
       return;
     }
     current_state_id = state_machine_.current_state->id;
@@ -494,7 +495,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::change_state_async_cb(
         "Failed to finish transition TODO @tgroechel: fix this call. Current state is now: %s (%s)",
         /*transition_id,*/ state_machine_.current_state->label, rcl_get_error_string().str);
       rcutils_reset_error();
-      async_change_state_ptr->rcl_ret_error();
+      async_change_state_ptr->lifecycle_node_interface_impl_private::_rcl_ret_error();
       return;
     }
     current_state_id = state_machine_.current_state->id;
@@ -518,7 +519,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::change_state_async_cb(
     {
       RCUTILS_LOG_ERROR("Failed to call cleanup on error state: %s", rcl_get_error_string().str);
       rcutils_reset_error();
-      async_change_state_ptr->rcl_ret_error();
+      async_change_state_ptr->lifecycle_node_interface_impl_private::_rcl_ret_error();
       return;
     }
   }
@@ -547,7 +548,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::change_state(
       RCUTILS_LOG_ERROR(
         "Unable to change state for state machine for %s: %s",
         node_base_interface_->get_name(), rcl_get_error_string().str);
-      return RCL_RET_ERROR;
+      return _rcl_ret_error;
     }
 
     // keep the initial state to pass to a transition callback
@@ -561,7 +562,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::change_state(
         "Unable to start transition %u from current state %s: %s",
         transition_id, state_machine_.current_state->label, rcl_get_error_string().str);
       rcutils_reset_error();
-      return RCL_RET_ERROR;
+      return _rcl_ret_error;
     }
     current_state_id = state_machine_.current_state->id;
   }
@@ -595,7 +596,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::change_state(
         "Failed to finish transition %u. Current state is now: %s (%s)",
         transition_id, state_machine_.current_state->label, rcl_get_error_string().str);
       rcutils_reset_error();
-      return RCL_RET_ERROR;
+      return _rcl_ret_error;
     }
     current_state_id = state_machine_.current_state->id;
   }
@@ -617,7 +618,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::change_state(
     {
       RCUTILS_LOG_ERROR("Failed to call cleanup on error state: %s", rcl_get_error_string().str);
       rcutils_reset_error();
-      return RCL_RET_ERROR;
+      return _rcl_ret_error;
     }
   }
 

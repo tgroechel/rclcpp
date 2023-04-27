@@ -28,18 +28,16 @@ public:
                         std::shared_ptr<ChangeStateHandler>)>
             complete_change_state_cb);
 
-    ChangeStateHandler::set_change_state_srv_hdl(const std::shared_ptr<rclcpp::Service<ChangeStateSrv>> change_state_srv_hdl);
-
-    ChangeStateHandler::set_rmw_request_id_header(const std::shared_ptr<rmw_request_id_t> header);
-
     void continue_change_state(node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code);
-
-    void rcl_ret_error();
 
     // Calling outside of lifecycle_node_interface_impl is undefined behavior
     // Avoids needing to forward declare lifecycle_node_interface_impl + friend
+    // TODO @tgroechel: is there a cleaner way to do this with a friend class?
     namespace lifecycle_node_interface_impl_private
     {
+    void _set_change_state_srv_hdl(const std::shared_ptr<rclcpp::Service<ChangeStateSrv>> change_state_srv_hdl);
+    void _set_rmw_request_id_header(const std::shared_ptr<rmw_request_id_t> header);    
+    void _rcl_ret_error();
     void _finalize_change_state(bool success);
     bool _is_srv_request();
     }

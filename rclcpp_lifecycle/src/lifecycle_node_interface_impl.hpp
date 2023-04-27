@@ -172,7 +172,7 @@ private:
     std::uint8_t,
     std::function<void(const State &, std::shared_ptr<ChangeStateHandler>)>> async_cb_map_;
   
-  std::shared_ptr<ChangeStateHandler> change_state_hdl;
+  std::shared_ptr<ChangeStateHandler> change_state_hdl; // TODO @tgroechel: should this be a unique_ptr?
 
   using NodeBasePtr = std::shared_ptr<rclcpp::node_interfaces::NodeBaseInterface>;
   using NodeServicesPtr = std::shared_ptr<rclcpp::node_interfaces::NodeServicesInterface>;

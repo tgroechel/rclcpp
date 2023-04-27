@@ -12,18 +12,6 @@ namespace rclcpp_lifecycle
     }
 
     void
-    ChangeStateHandler::set_change_state_srv_hdl(const std::shared_ptr<rclcpp::Service<ChangeStateSrv>> change_state_srv_hdl)
-    {
-        change_state_srv_hdl_ = change_state_srv_hdl;    
-    }
-
-    void 
-    ChangeStateHandler::set_rmw_request_id_header(const std::shared_ptr<rmw_request_id_t> header)
-    {
-        header_ = header;
-    }
-
-    void
     ChangeStateHandler::continue_change_state(
         node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code)
     {
@@ -31,7 +19,21 @@ namespace rclcpp_lifecycle
     }
 
     void
-    ChangeStateHandler::rcl_ret_error()
+    ChangeStateHandler::lifecycle_node_interface_impl_private::_set_change_state_srv_hdl(
+        const std::shared_ptr<rclcpp::Service<ChangeStateSrv>> change_state_srv_hdl)
+    {
+        change_state_srv_hdl_ = change_state_srv_hdl;    
+    }
+
+    void 
+    ChangeStateHandler::lifecycle_node_interface_impl_private::_set_rmw_request_id_header(
+        const std::shared_ptr<rmw_request_id_t> header)
+    {
+        header_ = header;
+    }
+
+    void
+    ChangeStateHandler::lifecycle_node_interface_impl_private::_rcl_ret_error()
     {
         _finalize_change_state(false);
     }
