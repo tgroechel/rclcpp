@@ -526,7 +526,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::change_state_async_cb(
   // Update the internal current_state_
   current_state_ = State(state_machine_.current_state);
 
-  async_change_state_ptr->lifecycle_node_interface_impl_private::_send_response(
+  async_change_state_ptr->lifecycle_node_interface_impl_private::_finalize_change_state(
     cb_return_code == node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS);
 }
 

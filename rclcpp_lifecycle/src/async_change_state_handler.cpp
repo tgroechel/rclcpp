@@ -16,7 +16,7 @@ namespace rclcpp_lifecycle
     }
 
     void
-    AsyncChangeStateHandler::complete_change_state(
+    AsyncChangeStateHandler::continue_change_state(
         node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code)
     {
         complete_change_state_cb_(cb_return_code, shared_from_this()); // TODO @tgroechel: not sure using 'this' makes sense, probably a better way
@@ -25,11 +25,11 @@ namespace rclcpp_lifecycle
     void
     AsyncChangeStateHandler::rcl_ret_error()
     {
-        _send_response(false);
+        _finalize_change_state(false);
     }
 
     void
-    AsyncChangeStateHandler::lifecycle_node_interface_impl_private::_send_response(
+    AsyncChangeStateHandler::lifecycle_node_interface_impl_private::_finalize_change_state(
         bool success)
     {
         // TODO @tgroechel: what should we do in the case where it is "invalid"
