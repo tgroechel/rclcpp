@@ -662,6 +662,8 @@ LifecycleNode::LifecycleNodeInterfaceImpl::execute_callback_async(
   // TODO @tgroechel: what to do if callback is not found? Likely throw an exeception denoting it isn't registered as async
 }
 
+// TODO @tgroechel: how to deal with trigger transition which calls generic "change_state"/doesn't have a handler
+//                  possibly we just make the `AsyncChangeStateHandler` a member of lifecycle
 const State & LifecycleNode::LifecycleNodeInterfaceImpl::trigger_transition(
   const char * transition_label)
 {
