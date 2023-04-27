@@ -107,8 +107,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::init(bool enable_communication_interf
   change_state_hdl = std::make_shared<ChangeStateHandler>(
           std::bind(&LifecycleNodeInterfaceImpl::change_state_async_cb, 
             this, 
-            std::placeholders::_1, 
-            std::placeholders::_2));
+            std::placeholders::_1));
           
 
   current_state_ = State(state_machine_.current_state);
