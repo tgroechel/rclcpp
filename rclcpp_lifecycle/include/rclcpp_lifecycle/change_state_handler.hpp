@@ -32,6 +32,7 @@ public:
     // Calling outside of lifecycle_node_interface_impl is undefined behavior
     // Avoids needing to forward declare lifecycle_node_interface_impl + friend
     // TODO @tgroechel: is there a cleaner way to do this with a friend class?
+    //                  another option is to base class in LifeCycle and then subclass in Impl called ChangeStateHandlerImpl -> this is probably the best idea imo, I'll do this last
     namespace lifecycle_node_interface_impl_private
     {
     void _set_change_state_srv_hdl(const std::shared_ptr<rclcpp::Service<ChangeStateSrv>> change_state_srv_hdl);
