@@ -508,6 +508,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::finalizing_change_state_cb(
 
 // NOTE @tgroechel: who uses the & cb_return code outside of here?
 // ANSWER: these are only used within impl + testing as far as I can tell, going to leave them but they should*, imo, be removed and tests updated accordingly
+// TODO @tgroechel: who uses rcl_ret_t here? I don't think anyone and now that this is async, I don't like it... probably in tests, no on in impl uses it
 rcl_ret_t
 LifecycleNode::LifecycleNodeInterfaceImpl::change_state( // MARK @tgroechel REAL_CHANGE_STATE (back here so often with ctrl + f so this is easier)
   std::uint8_t transition_id,
@@ -568,6 +569,9 @@ LifecycleNode::LifecycleNodeInterfaceImpl::change_state( // MARK @tgroechel REAL
     cb_return_code = execute_callback(current_state_id, initial_state);
     change_state_hdl->continue_change_state(cb_return_code);
   }
+
+  // TODO @tgroechel: what to return here? see TODO at top of change_state as I don't think anyone uses this outside of tests nor do I think it is useful at all
+  return RCL_RET_OK;
 }
 
 node_interfaces::LifecycleNodeInterface::CallbackReturn
