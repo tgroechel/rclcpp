@@ -151,7 +151,7 @@ private:
     std::uint8_t transition_id);
 
   void
-  change_state_async_cb(
+  post_udtf_cb(
     node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code);
 
 
