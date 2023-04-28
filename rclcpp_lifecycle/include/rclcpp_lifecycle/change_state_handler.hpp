@@ -20,7 +20,7 @@ public:
     using ChangeStateSrv = lifecycle_msgs::srv::ChangeState;
     ChangeStateHandler(
         std::function<void(node_interfaces::LifecycleNodeInterface::CallbackReturn)>
-            handle_potential_udtf_error_cb,
+            post_udtf_cb,
         std::function<void(node_interfaces::LifecycleNodeInterface::CallbackReturn)>
             post_on_error_cb,
         std::function<void(node_interfaces::LifecycleNodeInterface::CallbackReturn)>
@@ -50,7 +50,7 @@ private:
     //                  "change_state_post_user_transition_callback" and
     //                  "change_state_post_error_handling"
     std::function<void(node_interfaces::LifecycleNodeInterface::CallbackReturn)>
-        handle_potential_udtf_error_cb_;
+        post_udtf_cb_;
     std::function<void(node_interfaces::LifecycleNodeInterface::CallbackReturn)>
         post_on_error_cb_;
     std::function<void(node_interfaces::LifecycleNodeInterface::CallbackReturn)>
@@ -61,17 +61,17 @@ private:
    /*
    READY                        -> {STAGE_SRV_REQ, PRE_UDTF}
    STAGE_SRV_REQ                -> {PRE_UDTF}
-   PRE_UDTF                     -> {HANDLE_POTENTIAL_UDTF_ERROR}    // change_state
-   HANDLE_POTENTIAL_UDTF_ERROR  -> {POST_ON_ERROR, FINALIZING}      // handle_potential_udtf_error_cb_
+   PRE_UDTF                     -> {POST_UDTF}                      // change_state
+   POST_UDTF                    -> {POST_ON_ERROR, FINALIZING}      // post_udtf_cb_
    POST_ON_ERROR                -> {FINALIZING}                     // handle_post_on_error_cb_
-   FINALIZING                   -> {READY}                         // finalize_change_state_cb_
+   FINALIZING                   -> {READY}                          // finalize_change_state_cb_
    */
-   enum ChangeStateStage
+   enum ChangeStateStage // TODO @tgroechel: should have gone with a behavior tree design, this would be a reach goal though / a decent amount of scaffolding I think
    {
         READY,
         STAGED_SRV_REQ, // this is used as a passthrough for change_state when coming from srv
         PRE_UDTF, // TODO @tgroechel: once I rename the callback functions, these should also be renamed to PRE_USER_TRANSITION_CALLBACK/PRE_USER_TRANSITION_FUNCTION
-        HANDLE_POTENTIAL_UDTF_ERROR,
+        POST_UDTF,
         POST_ON_ERROR,
         FINALIZING
    };

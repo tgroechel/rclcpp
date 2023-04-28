@@ -5,12 +5,12 @@ namespace rclcpp_lifecycle
 
     ChangeStateHandler::ChangeStateHandler(
         std::function<void(node_interfaces::LifecycleNodeInterface::CallbackReturn)>
-            handle_potential_udtf_error_cb,
+            post_udtf_cb,
         std::function<void(node_interfaces::LifecycleNodeInterface::CallbackReturn)>
             post_on_error_cb,
         std::function<void(node_interfaces::LifecycleNodeInterface::CallbackReturn)>
             finalizing_cb)
-        : handle_potential_udtf_error_cb_(handle_potential_udtf_error_cb),
+        : post_udtf_cb_(post_udtf_cb),
           post_on_error_cb_(post_on_error_cb),
           finalizing_cb_(finalizing_cb),
           stage_(ChangeStateStage::READY)
@@ -21,20 +21,19 @@ namespace rclcpp_lifecycle
     ChangeStateHandler::continue_change_state(
         node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code)
     {
-        if(stage_ == ChangeStateStage::PRE_UDTF) // normal UDTF was just called
-        {
-            stage_ = ChangeStateStage::HANDLE_POTENTIAL_UDTF_ERROR;
-            handle_potential_udtf_error_cb_(cb_return_code);
-        }
-        else if(stage_ == ChangeStateStage::HANDLE_POTENTIAL_UDTF_ERROR)
+        if(stage_ == ChangeStateStage::PRE_UDTF)
         {
             stage_ = ChangeStateStage::POST_UDTF;
-            post_on_error_bc_(cb_return_code);
+            post_udtf_cb_(cb_return_code);
         }
         else if(stage_ == ChangeStateStage::POST_UDTF)
         {
-            stage_ = ChangeStateStage::FINALIZING;
-            handle_on_error_cb_(cb_return_code);
+            stage_ = ChangeStateStage::POST_ON_ERROR;
+            post_on_error_cb_(cb_return_code);
+        }
+        else if(stage_ == ChangeStateStage::FINALIZING)
+        {
+            finalizing_cb_(cb_return_code);
         }
 
         // TODO @tgroechel: what to do in case of failure here? Could assert or log warning/error or throw exception?
@@ -82,7 +81,7 @@ namespace rclcpp_lifecycle
     ChangeStateHandler::lifecycle_node_interface_impl_private::_no_error_from_udtf(
         const std::shared_ptr<rmw_request_id_t> header)
     {
-        // TODO @tgroechel: this should assert == HANDLE_POTENTIAL_UDTF_ERROR
+        // TODO @tgroechel: this should assert == POST_UDTF
         stage_ = ChangeStateStage::FINALIZING;
     }
 

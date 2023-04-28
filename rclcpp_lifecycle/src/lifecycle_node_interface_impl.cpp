@@ -105,7 +105,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::init(bool enable_communication_interf
             node_base_interface_->get_name());
   }
   change_state_hdl = std::make_shared<ChangeStateHandler>(
-          std::bind(&LifecycleNodeInterfaceImpl::handle_potential_udtf_error_cb, 
+          std::bind(&LifecycleNodeInterfaceImpl::post_udtf_cb, 
             this, 
             std::placeholders::_1));
           
@@ -409,58 +409,6 @@ LifecycleNode::LifecycleNodeInterfaceImpl::get_transition_graph() const
   return transitions;
 }
 
-// NOTE @tgroechel: refactor this function into change_state itself possibly - this is the refactor deprecated version, moving all into change_state, leaving in case this is helpful at all
-void
-LifecycleNode::LifecycleNodeInterfaceImpl::change_state_async(
-  std::uint8_t transition_id,
-  CallbackReturn &callback_return) // can we just get rid of this
-{
-  constexpr bool publish_update = true;
-  State initial_state;
-  unsigned int current_state_id;
-
-  {
-    std::lock_guard<std::recursive_mutex> lock(state_machine_mutex_);
-    if (rcl_lifecycle_state_machine_is_initialized(&state_machine_) != RCL_RET_OK) {
-      RCUTILS_LOG_ERROR(
-        "Unable to change state for state machine for %s: %s",
-        node_base_interface_->get_name(), rcl_get_error_string().str);
-      change_state_hdl->lifecycle_node_interface_impl_private::_rcl_ret_error();
-      return;
-    }
-
-    // keep the initial state to pass to a transition callback
-    initial_state = State(state_machine_.current_state);
-
-    if (
-      rcl_lifecycle_trigger_transition_by_id(
-        &state_machine_, transition_id, publish_update) != RCL_RET_OK)
-    {
-      RCUTILS_LOG_ERROR(
-        "Unable to start transition %u from current state %s: %s",
-        transition_id, state_machine_.current_state->label, rcl_get_error_string().str);
-      rcutils_reset_error();
-      change_state_hdl->lifecycle_node_interface_impl_private::_rcl_ret_error();
-      return;
-    }
-    current_state_id = state_machine_.current_state->id;
-  }
-
-  // Update the internal current_state_
-  current_state_ = State(state_machine_.current_state);
-
-  auto is_async_pair_it = async_cb_map_.find(current_state_id); // TODO: deal with async v not
-  if(is_async_pair_it != async_cb_map_.end())
-  {
-    execute_async_callback(current_state_id, initial_state, change_state_hdl);
-  }
-  else
-  {
-    handle_potential_udtf_error_cb(execute_callback(current_state_id, initial_state));
-    // call the next function here
-  }
-}
-
 const char *
 LifecycleNode::LifecycleNodeInterfaceImpl::get_label_for_return_code(
   node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code)
@@ -475,7 +423,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::get_label_for_return_code(
 }  
 
 void // TODO @tgroechel: deal with any early returns and plumbing them back....
-LifecycleNode::LifecycleNodeInterfaceImpl::handle_potential_udtf_error_cb(
+LifecycleNode::LifecycleNodeInterfaceImpl::post_udtf_cb(
   node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code) // TODO @tgroechel: this cb return code is changed early on but kind of weird given you can get an error callback later
 {
   constexpr bool publish_update = true; // NOTE @tgroechel: this is never false, why? // ANSWER: no apparent reason but not worth fixing in this PR imo
@@ -519,8 +467,8 @@ LifecycleNode::LifecycleNodeInterfaceImpl::handle_potential_udtf_error_cb(
   }
   else
   {
-      change_state_hdl->lifecycle_node_interface_impl_private::_no_error_from_udtf();
-      change_state_hdl->continue_change_state(cb_return_code);
+    change_state_hdl->lifecycle_node_interface_impl_private::_no_error_from_udtf();
+    change_state_hdl->continue_change_state(cb_return_code);
   }
 }
 
