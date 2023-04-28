@@ -107,6 +107,12 @@ LifecycleNode::LifecycleNodeInterfaceImpl::init(bool enable_communication_interf
   change_state_hdl = std::make_shared<ChangeStateHandler>(
           std::bind(&LifecycleNodeInterfaceImpl::post_udtf_cb, 
             this, 
+            std::placeholders::_1),
+          std::bind(&LifecycleNodeInterfaceImpl::post_on_error_cb, 
+            this, 
+            std::placeholders::_1),
+          std::bind(&LifecycleNodeInterfaceImpl::finalize_change_state_cb, 
+            this, 
             std::placeholders::_1));
           
 
@@ -260,12 +266,6 @@ LifecycleNode::LifecycleNodeInterfaceImpl::on_change_state(
 
   node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code;
   change_state(transition_id, cb_return_code);
-  // TODO @tgroechel: need to deal with this, may as well while I'm doing a larger re-write
-  //                  need to move this TODO to the post error handling callback
-  // TODO(karsten1987): Lifecycle msgs have to be extended to keep both returns
-  // 1. return is the actual transition
-  // 2. return is whether an error occurred or not
-  }
 }
 
 void
@@ -490,13 +490,17 @@ LifecycleNode::LifecycleNodeInterfaceImpl::post_on_error_cb(
   change_state_hdl->continue_change_state(error_cb_code);
 }
 
+// TODO @tgroechel: sending the response etc should only be callable from within change_state
+//                  there is a transition caller with calls callbacks
 void
 LifecycleNode::LifecycleNodeInterfaceImpl::finalizing_change_state_cb(
   node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code)
 {
-  // Update the internal current_state_
   current_state_ = State(state_machine_.current_state);
-
+  // TODO @tgroechel: need to deal with this TODO, may as well while I'm doing a larger re-write
+  // TODO(karsten1987): Lifecycle msgs have to be extended to keep both returns
+  // 1. return is the actual transition
+  // 2. return is whether an error occurred or not
   change_state_hdl->lifecycle_node_interface_impl_private::_finalize_change_state(
     cb_return_code == node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS);
 }

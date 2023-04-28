@@ -24,7 +24,7 @@ public:
         std::function<void(node_interfaces::LifecycleNodeInterface::CallbackReturn)>
             post_on_error_cb,
         std::function<void(node_interfaces::LifecycleNodeInterface::CallbackReturn)>
-            finalizing_cb);
+            finalize_change_state_cb);
 
     void continue_change_state(node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code);
 
@@ -47,24 +47,24 @@ public:
 
 private:
     // TODO @tgroechel: probably rename these, removing the cb and just doing 
-    //                  "change_state_post_user_transition_callback" and
-    //                  "change_state_post_error_handling"
+    //                  "change_state_post_user_transition_callback" 
     std::function<void(node_interfaces::LifecycleNodeInterface::CallbackReturn)>
         post_udtf_cb_;
     std::function<void(node_interfaces::LifecycleNodeInterface::CallbackReturn)>
         post_on_error_cb_;
     std::function<void(node_interfaces::LifecycleNodeInterface::CallbackReturn)>
-        finalizing_cb_;
+        finalize_change_state_cb_;
     const std::shared_ptr<rclcpp::Service<ChangeStateSrv>> change_state_srv_hdl_; 
     const std::shared_ptr<rmw_request_id_t> header_;
 
    /*
-   READY                        -> {STAGE_SRV_REQ, PRE_UDTF}
-   STAGE_SRV_REQ                -> {PRE_UDTF}
-   PRE_UDTF                     -> {POST_UDTF}                      // change_state
-   POST_UDTF                    -> {POST_ON_ERROR, FINALIZING}      // post_udtf_cb_
-   POST_ON_ERROR                -> {FINALIZING}                     // handle_post_on_error_cb_
-   FINALIZING                   -> {READY}                          // finalize_change_state_cb_
+   READY            -> {STAGE_SRV_REQ, PRE_UDTF}
+   STAGE_SRV_REQ    -> {PRE_UDTF}
+   PRE_UDTF         -> {POST_UDTF}                      // change_state
+   POST_UDTF        -> {POST_ON_ERROR, FINALIZING}      // post_udtf_cb_
+   POST_ON_ERROR    -> {FINALIZING}                     // handle_post_on_error_cb_
+   FINALIZING       -> {READY}                          // finalize_change_state_cb_
+   ***ANY***        -> {FINALIZING}                     // i.e., early exit of change_state
    */
    enum ChangeStateStage // TODO @tgroechel: should have gone with a behavior tree design, this would be a reach goal though / a decent amount of scaffolding I think
    {

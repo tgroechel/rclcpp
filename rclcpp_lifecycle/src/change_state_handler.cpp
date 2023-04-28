@@ -9,10 +9,10 @@ namespace rclcpp_lifecycle
         std::function<void(node_interfaces::LifecycleNodeInterface::CallbackReturn)>
             post_on_error_cb,
         std::function<void(node_interfaces::LifecycleNodeInterface::CallbackReturn)>
-            finalizing_cb)
+            finalize_change_state_cb)
         : post_udtf_cb_(post_udtf_cb),
           post_on_error_cb_(post_on_error_cb),
-          finalizing_cb_(finalizing_cb),
+          finalize_change_state_cb_(finalize_change_state_cb),
           stage_(ChangeStateStage::READY)
     {
     }
@@ -33,7 +33,7 @@ namespace rclcpp_lifecycle
         }
         else if(stage_ == ChangeStateStage::FINALIZING)
         {
-            finalizing_cb_(cb_return_code);
+            finalize_change_state_cb_(cb_return_code);
         }
 
         // TODO @tgroechel: what to do in case of failure here? Could assert or log warning/error or throw exception?
@@ -95,7 +95,6 @@ namespace rclcpp_lifecycle
     ChangeStateHandler::lifecycle_node_interface_impl_private::_finalize_change_state(
         bool success)
     {
-        // TODO @tgroechel: this should assert == FINALIZING
         if(_is_srv_request())
         {
             ChangeStateSrv::Response resp;
