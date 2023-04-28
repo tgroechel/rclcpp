@@ -1,4 +1,6 @@
+// TODO @tgroechel: liscense
 #include "rclcpp_lifecycle/async_change_state_handler.hpp"
+#include <cassert> // TODO @tgroechel: does rclcpp like or dislike asserts?
 
 namespace rclcpp_lifecycle
 {
@@ -36,7 +38,7 @@ namespace rclcpp_lifecycle
             finalize_change_state_cb_(cb_return_code);
         }
 
-        // TODO @tgroechel: what to do in case of failure here? Could assert or log warning/error or throw exception?
+        // TODO @tgroechel: what to do in case of failure here? Could assert or log warning/error or throw exception? Silently do nothing?
         //                  Two times I think this could happen off the top of my head:
         //                  1. user defined transition callback calls this twice
         //                  2. error within implementation of lifecycle_node_interface_impl
@@ -57,7 +59,7 @@ namespace rclcpp_lifecycle
     void
     ChangeStateHandler::lifecycle_node_interface_impl_private::_start_change_state()
     {
-        // TODO @tgroechel: this should probably assert == READY || == STAGED_SRV_REQ
+        assert(stage_ == ChangeStateStage::READY || stage_ == ChangeStateStage::STAGED_SRV_REQ);
         stage_ = ChangeStateStage::PRE_UDTF;
     }
 
@@ -72,7 +74,7 @@ namespace rclcpp_lifecycle
     ChangeStateHandler::lifecycle_node_interface_impl_private::_set_rmw_request_id_header(
         const std::shared_ptr<rmw_request_id_t> header)
     {
-        // TODO @tgroechel: this should assert == READY
+        assert(stage_ == ChangeStateStage::READY);
         stage_ = ChangeStateStage::STAGED_SRV_REQ;
         header_ = header;
     }
@@ -81,7 +83,7 @@ namespace rclcpp_lifecycle
     ChangeStateHandler::lifecycle_node_interface_impl_private::_no_error_from_udtf(
         const std::shared_ptr<rmw_request_id_t> header)
     {
-        // TODO @tgroechel: this should assert == POST_UDTF
+        assert(stage_ == ChangeStateStage::POST_UDTF);
         stage_ = ChangeStateStage::FINALIZING;
     }
 

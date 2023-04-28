@@ -163,6 +163,8 @@ private:
   const char *
   get_label_for_return_code(node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code);
 
+  // TODO @tgroechel: pull over all functions to have header defintions from cpp file to here
+
   mutable std::recursive_mutex state_machine_mutex_;
   rcl_lifecycle_state_machine_t state_machine_;
   State current_state_;

@@ -211,7 +211,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::register_callback(
   std::uint8_t lifecycle_transition,
   std::function<node_interfaces::LifecycleNodeInterface::CallbackReturn(const State &)> & cb)
 {
-  cb_map_[lifecycle_transition] = cb;
+  cb_map_[lifecycle_transition] = cb; // TODO @tgroechel: can we only use a single map? Or should be default maps out to nullptr when registering one or the other
   return true;
 }
 
@@ -424,7 +424,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::get_label_for_return_code(
 
 void // TODO @tgroechel: deal with any early returns and plumbing them back....
 LifecycleNode::LifecycleNodeInterfaceImpl::post_udtf_cb(
-  node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code) // TODO @tgroechel: this cb return code is changed early on but kind of weird given you can get an error callback later
+  node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code)
 {
   constexpr bool publish_update = true; // NOTE @tgroechel: this is never false, why? // ANSWER: no apparent reason but not worth fixing in this PR imo
   unsigned int current_state_id; // TODO @tgroechel: fix with passing over state info
@@ -490,8 +490,6 @@ LifecycleNode::LifecycleNodeInterfaceImpl::post_on_error_cb(
   change_state_hdl->continue_change_state(error_cb_code);
 }
 
-// TODO @tgroechel: sending the response etc should only be callable from within change_state
-//                  there is a transition caller with calls callbacks
 void
 LifecycleNode::LifecycleNodeInterfaceImpl::finalizing_change_state_cb(
   node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code)
@@ -506,9 +504,9 @@ LifecycleNode::LifecycleNodeInterfaceImpl::finalizing_change_state_cb(
 }
 
 
-// NOTE @tgroechel: who uses the & cb_return code outside of here?
+// NOTE @tgroechel: who uses the & cb_return code outside of here? RET_RETURN_TODO
 // ANSWER: these are only used within impl + testing as far as I can tell, going to leave them but they should*, imo, be removed and tests updated accordingly
-// TODO @tgroechel: who uses rcl_ret_t here? I don't think anyone and now that this is async, I don't like it... probably in tests, no on in impl uses it
+// TODO @tgroechel: who uses rcl_ret_t here? I don't think anyone and now that this is async, I don't like it... probably in tests, no on in impl uses it - RET_RETURN_TODO
 rcl_ret_t
 LifecycleNode::LifecycleNodeInterfaceImpl::change_state( // MARK @tgroechel REAL_CHANGE_STATE (back here so often with ctrl + f so this is easier)
   std::uint8_t transition_id,
@@ -521,7 +519,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::change_state( // MARK @tgroechel REAL
     // Do not call to change_state_hdl->lifecycle_node_interface_impl_private::_rcl_ret_error();
     // This is not necessary as `on_change_state` would have handled an error response to the server
     // Any internal trigger call does not need _rcl_ret_error
-    return RCL_RET_ERROR; // TODO @tgroechel: not sure if this is the correct return here, page of rcl_ret_t - https://docs.ros2.org/beta1/api/rcl/types_8h.html
+    return RCL_RET_ERROR; // TODO @tgroechel: not sure if this is the correct return here, page of rcl_ret_t - https://docs.ros2.org/beta1/api/rcl/types_8h.html, RET_RETURN_TODO
   }
   change_state_hdl->lifecycle_node_interface_impl_private::_start_change_state();
 
@@ -559,7 +557,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::change_state( // MARK @tgroechel REAL
   // Update the internal current_state_
   current_state_ = State(state_machine_.current_state);
 
-  auto is_async_pair_it = async_cb_map_.find(transition_state_id); // TODO: deal with async v not, maybe just have regular execute callback do the callback on return? maybe I don't even need to
+  auto is_async_pair_it = async_cb_map_.find(transition_state_id);
   if(is_async_pair_it != async_cb_map_.end()) // TODO @tgroechel: move this to a helper function, will need later
   {
     execute_async_callback(current_state_id, initial_state, change_state_hdl);
@@ -570,7 +568,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::change_state( // MARK @tgroechel REAL
     change_state_hdl->continue_change_state(cb_return_code);
   }
 
-  // TODO @tgroechel: what to return here? see TODO at top of change_state as I don't think anyone uses this outside of tests nor do I think it is useful at all
+  // TODO @tgroechel: what to return here? see TODO at top of change_state as I don't think anyone uses this outside of tests nor do I think it is useful at all, RET_RETURN_TODO
   return RCL_RET_OK;
 }
 
@@ -603,10 +601,10 @@ LifecycleNode::LifecycleNodeInterfaceImpl::execute_async_callback(
   auto it = async_cb_map_.find(static_cast<uint8_t>(cb_id));
   if (it != async_cb_map_.end()) {
     auto callback = it->second;
-    // TODO @tgroechel: does not handle execptions within callback
+    // TODO @tgroechel: does not handle exceptions within callback
     callback(State(previous_state), change_state_hdl);
   }
-  // TODO @tgroechel: what to do if callback is not found? Likely throw an exeception denoting it isn't registered as async
+  // TODO @tgroechel: what to do if callback is not found? Likely throw an exception denoting it isn't registered as async
 }
 
 const State & LifecycleNode::LifecycleNodeInterfaceImpl::trigger_transition(
