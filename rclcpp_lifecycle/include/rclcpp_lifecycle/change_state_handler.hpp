@@ -51,7 +51,7 @@ private:
     std::function<void(node_interfaces::LifecycleNodeInterface::CallbackReturn)>
         post_udtf_cb_;
     std::function<void(node_interfaces::LifecycleNodeInterface::CallbackReturn)>
-        post_error_handling_cb_;
+        handle_on_error_cb_;
     std::function<void(node_interfaces::LifecycleNodeInterface::CallbackReturn)>
         finalizing_cb_;
     const std::shared_ptr<rclcpp::Service<ChangeStateSrv>> change_state_srv_hdl_; 
@@ -75,11 +75,12 @@ private:
         - set status to 1
     */
    /*
+   ANY                  -> {READY}
    READY                -> {STAGED_SRV_REQ, PRE_UDTF}
    STAGE_SRV_REQ        -> {PRE_UDTF}
    PRE_UDTF             -> {POST_UDTF}
-   POST_UDTF            -> {POST_ERROR_HANDLING, FINALIZING}
-   POST_ERROR_HANDLING  -> {FINALIZING}
+   POST_UDTF            -> {HANDLE_ERROR, FINALIZING}
+   HANDLE_ERROR         -> {POST_UDTF}                 // TODO @tgroechel: is there a better way so we don't have a circular dependency, possibly just pretend to "handle error first and clear if no error"
    FINALIZING           -> {READY}
    */
    enum ChangeStateStage
@@ -88,7 +89,7 @@ private:
         STAGED_SRV_REQ, // this is used as a passthrough for change_state when coming from srv
         PRE_UDTF, // TODO @tgroechel: once I rename the callback functions, these should also be renamed to PRE_USER_TRANSITION_CALLBACK/PRE_USER_TRANSITION_FUNCTION
         POST_UDTF,
-        POST_ERROR_HANDLING,
+        HANDLE_ERROR,
         FINALIZING
    };
 

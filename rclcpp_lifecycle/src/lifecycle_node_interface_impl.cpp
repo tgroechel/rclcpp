@@ -508,6 +508,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::post_udtf_cb(
   if (cb_return_code == node_interfaces::LifecycleNodeInterface::CallbackReturn::ERROR) {
     RCUTILS_LOG_WARN("Error occurred while doing error handling.");
     // TODO @tgroechel: this now needs to set that an error occured in ChangeStateHandler
+    change_state_hdl->lifecycle_node_interface_impl_private::_error_cb();
 
     if(is_async_pair_it != async_cb_map_.end()) // TODO @tgroechel: move this to a helper function, will need later
     {
@@ -526,7 +527,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::post_udtf_cb(
 }
 
 void
-LifecycleNode::LifecycleNodeInterfaceImpl::post_error_handling_cb(
+LifecycleNode::LifecycleNodeInterfaceImpl::handle_on_error_cb(
   node_interfaces::LifecycleNodeInterface::CallbackReturn error_cb_code)
 {
   auto error_cb_label = get_label_for_return_code(error_cb_code);
@@ -540,7 +541,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::post_error_handling_cb(
     change_state_hdl->lifecycle_node_interface_impl_private::_rcl_ret_error();
     return;
   }
-
+  change_state_hdl->lifecycle_node_interface_impl_private::
 }
 
 void

@@ -11,7 +11,7 @@ namespace rclcpp_lifecycle
         std::function<void(node_interfaces::LifecycleNodeInterface::CallbackReturn)>
             finalizing_cb)
         : post_udtf_cb_(post_udtf_cb), 
-          post_error_handling_cb_(post_error_handling_cb),
+          handle_on_error_cb_(post_error_handling_cb),
           finalizing_cb_(finalizing_cb),
           stage_(ChangeStateStage::READY)
     {
@@ -26,11 +26,17 @@ namespace rclcpp_lifecycle
             stage_ = ChangeStateStage::POST_UDTF;
             post_udtf_cb_(cb_return_code);
         }
-        else if(stage_ == ChangeStateStage::POST_ERROR_HANDLING) // ERROR UDTF
+        else if(stage_ == ChangeStateStage::HANDLE_ERROR)
+        {
+            stage_ = ChangeStateStage::POST_UDTF;
+            handle_error_cb_(cb_return_code);
+        }
+        else if(stage_ == ChangeStateStage::POST_UDTF)
         {
             stage_ = ChangeStateStage::FINALIZING;
-            post_error_handling_cb_(cb_return_code);
+            handle_on_error_cb_(cb_return_code);
         }
+
         // TODO @tgroechel: what to do in case of failure here? Could assert or log warning/error or throw exception?
         //                  Two times I think this could happen off the top of my head:
         //                  1. user defined transition callback calls this twice
@@ -67,6 +73,7 @@ namespace rclcpp_lifecycle
     ChangeStateHandler::lifecycle_node_interface_impl_private::_set_rmw_request_id_header(
         const std::shared_ptr<rmw_request_id_t> header)
     {
+        // TODO @tgroechel: this should assert == READY
         stage_ = ChangeStateStage::STAGED_SRV_REQ;
         header_ = header;
     }
@@ -81,6 +88,7 @@ namespace rclcpp_lifecycle
     ChangeStateHandler::lifecycle_node_interface_impl_private::_finalize_change_state(
         bool success)
     {
+        // TODO @tgroechel: this should assert == FINALIZING
         if(_is_srv_request())
         {
             ChangeStateSrv::Response resp;
