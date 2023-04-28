@@ -255,7 +255,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::on_change_state(
   }
 
   node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code;
-  change_state(transition_id, cb_return_code);
+  change_state(transition_id, cb_return_code); // MARK @tgroechel: CHANGE_STATE: not using cb return code
   // TODO @tgroechel: we would actually prefer to do all the finalizing/error etc from within change_state itself and never return here
   // TODO @tgroechel: need to deal with this, may as well while I'm doing a larger re-write
   // TODO(karsten1987): Lifecycle msgs have to be extended to keep both returns
@@ -524,8 +524,9 @@ LifecycleNode::LifecycleNodeInterfaceImpl::change_state_async_cb(
     cb_return_code == node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS);
 }
 
-// TODO @tgroechel: NO ONE USES THE RETURN VALUE HERE
-//                  possibly remodel it as YOLO change_state call
+
+// TODO @tgroechel: who the heck uses the & cb_return code outside of here?
+// ANSWER: these are only used within impl + testing as far as I can tell, going to leave them but they should*, imo, be removed and tests updated accordingly
 rcl_ret_t
 LifecycleNode::LifecycleNodeInterfaceImpl::change_state(
   std::uint8_t transition_id,
@@ -666,7 +667,7 @@ const State & LifecycleNode::LifecycleNodeInterfaceImpl::trigger_transition(
   const char * transition_label)
 {
   node_interfaces::LifecycleNodeInterface::CallbackReturn error;
-  return trigger_transition(transition_label, error);
+  return trigger_transition(transition_label, error); // MARK @tgroechel: CHANGE_STATE: not using cb return code
 }
 
 const State & LifecycleNode::LifecycleNodeInterfaceImpl::trigger_transition(
@@ -681,7 +682,7 @@ const State & LifecycleNode::LifecycleNodeInterfaceImpl::trigger_transition(
       rcl_lifecycle_get_transition_by_label(state_machine_.current_state, transition_label);
   }
   if (transition) {
-    change_state(static_cast<uint8_t>(transition->id), cb_return_code);
+    change_state(static_cast<uint8_t>(transition->id), cb_return_code); // MARK @tgroechel: CHANGE_STATE: not using cb return code
   }
   return get_current_state();
 }
@@ -690,7 +691,7 @@ const State &
 LifecycleNode::LifecycleNodeInterfaceImpl::trigger_transition(uint8_t transition_id)
 {
   node_interfaces::LifecycleNodeInterface::CallbackReturn error;
-  change_state(transition_id, error);
+  change_state(transition_id, error); // MARK @tgroechel: CHANGE_STATE: not using cb return code (maybe this is in tests or something?)
   (void) error;
   return get_current_state();
 }
@@ -700,7 +701,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::trigger_transition(
   uint8_t transition_id,
   node_interfaces::LifecycleNodeInterface::CallbackReturn & cb_return_code)
 {
-  change_state(transition_id, cb_return_code);
+  change_state(transition_id, cb_return_code); // MARK @tgroechel: CHANGE_STATE: not using cb return code
   return get_current_state();
 }
 
