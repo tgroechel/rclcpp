@@ -5,13 +5,13 @@ namespace rclcpp_lifecycle
 
     ChangeStateHandler::ChangeStateHandler(
         std::function<void(node_interfaces::LifecycleNodeInterface::CallbackReturn)>
-            post_udtf_cb,
+            handle_potential_udtf_error_cb,
         std::function<void(node_interfaces::LifecycleNodeInterface::CallbackReturn)>
-            post_error_handling_cb,
+            post_on_error_cb,
         std::function<void(node_interfaces::LifecycleNodeInterface::CallbackReturn)>
             finalizing_cb)
-        : post_udtf_cb_(post_udtf_cb), 
-          handle_on_error_cb_(post_error_handling_cb),
+        : handle_potential_udtf_error_cb_(handle_potential_udtf_error_cb),
+          post_on_error_cb_(post_on_error_cb),
           finalizing_cb_(finalizing_cb),
           stage_(ChangeStateStage::READY)
     {
@@ -23,13 +23,13 @@ namespace rclcpp_lifecycle
     {
         if(stage_ == ChangeStateStage::PRE_UDTF) // normal UDTF was just called
         {
-            stage_ = ChangeStateStage::POST_UDTF;
-            post_udtf_cb_(cb_return_code);
+            stage_ = ChangeStateStage::HANDLE_POTENTIAL_UDTF_ERROR;
+            handle_potential_udtf_error_cb_(cb_return_code);
         }
-        else if(stage_ == ChangeStateStage::HANDLE_ERROR)
+        else if(stage_ == ChangeStateStage::HANDLE_POTENTIAL_UDTF_ERROR)
         {
             stage_ = ChangeStateStage::POST_UDTF;
-            handle_error_cb_(cb_return_code);
+            post_on_error_bc_(cb_return_code);
         }
         else if(stage_ == ChangeStateStage::POST_UDTF)
         {
@@ -78,6 +78,14 @@ namespace rclcpp_lifecycle
         header_ = header;
     }
 
+    void 
+    ChangeStateHandler::lifecycle_node_interface_impl_private::_no_error_from_udtf(
+        const std::shared_ptr<rmw_request_id_t> header)
+    {
+        // TODO @tgroechel: this should assert == HANDLE_POTENTIAL_UDTF_ERROR
+        stage_ = ChangeStateStage::FINALIZING;
+    }
+
     void
     ChangeStateHandler::lifecycle_node_interface_impl_private::_rcl_ret_error()
     {
@@ -96,7 +104,7 @@ namespace rclcpp_lifecycle
             change_state_srv_hdl_->send_response(*header_, resp);
             header_.reset();
         }
-        // TODO @tgroechel: what to do for non-server based finalizing
+        // TODO @tgroechel: what to do for non-server based finalizing, this goes along with traditional internal triggers, possibly hold some return value for them throughout
 
         stage_ = ChangeStateStage::READY;
     }

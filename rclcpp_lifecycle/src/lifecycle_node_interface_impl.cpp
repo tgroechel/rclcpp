@@ -105,7 +105,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::init(bool enable_communication_interf
             node_base_interface_->get_name());
   }
   change_state_hdl = std::make_shared<ChangeStateHandler>(
-          std::bind(&LifecycleNodeInterfaceImpl::post_udtf_cb, 
+          std::bind(&LifecycleNodeInterfaceImpl::handle_potential_udtf_error_cb, 
             this, 
             std::placeholders::_1));
           
@@ -456,7 +456,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::change_state_async(
   }
   else
   {
-    post_udtf_cb(execute_callback(current_state_id, initial_state));
+    handle_potential_udtf_error_cb(execute_callback(current_state_id, initial_state));
     // call the next function here
   }
 }
@@ -475,7 +475,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::get_label_for_return_code(
 }  
 
 void // TODO @tgroechel: deal with any early returns and plumbing them back....
-LifecycleNode::LifecycleNodeInterfaceImpl::post_udtf_cb(
+LifecycleNode::LifecycleNodeInterfaceImpl::handle_potential_udtf_error_cb(
   node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code) // TODO @tgroechel: this cb return code is changed early on but kind of weird given you can get an error callback later
 {
   constexpr bool publish_update = true; // NOTE @tgroechel: this is never false, why? // ANSWER: no apparent reason but not worth fixing in this PR imo
@@ -507,9 +507,6 @@ LifecycleNode::LifecycleNodeInterfaceImpl::post_udtf_cb(
   // TODO(karsten1987): iterate over possible ret value
   if (cb_return_code == node_interfaces::LifecycleNodeInterface::CallbackReturn::ERROR) {
     RCUTILS_LOG_WARN("Error occurred while doing error handling.");
-    // TODO @tgroechel: this now needs to set that an error occured in ChangeStateHandler
-    change_state_hdl->lifecycle_node_interface_impl_private::_error_cb();
-
     if(is_async_pair_it != async_cb_map_.end()) // TODO @tgroechel: move this to a helper function, will need later
     {
       execute_async_callback(current_state_id, initial_state, change_state_hdl);
@@ -522,12 +519,13 @@ LifecycleNode::LifecycleNodeInterfaceImpl::post_udtf_cb(
   }
   else
   {
+      change_state_hdl->lifecycle_node_interface_impl_private::_no_error_from_udtf();
       change_state_hdl->continue_change_state(cb_return_code);
   }
 }
 
 void
-LifecycleNode::LifecycleNodeInterfaceImpl::handle_on_error_cb(
+LifecycleNode::LifecycleNodeInterfaceImpl::post_on_error_cb(
   node_interfaces::LifecycleNodeInterface::CallbackReturn error_cb_code)
 {
   auto error_cb_label = get_label_for_return_code(error_cb_code);
@@ -541,7 +539,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::handle_on_error_cb(
     change_state_hdl->lifecycle_node_interface_impl_private::_rcl_ret_error();
     return;
   }
-  change_state_hdl->lifecycle_node_interface_impl_private::
+  change_state_hdl->continue_change_state(error_cb_code);
 }
 
 void
