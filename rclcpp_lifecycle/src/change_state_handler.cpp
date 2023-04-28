@@ -5,11 +5,14 @@ namespace rclcpp_lifecycle
 
     ChangeStateHandler::ChangeStateHandler(
         std::function<void(node_interfaces::LifecycleNodeInterface::CallbackReturn)>
-            post_udtf_cb),
+            post_udtf_cb,
         std::function<void(node_interfaces::LifecycleNodeInterface::CallbackReturn)>
-            post_error_handling_cb
+            post_error_handling_cb,
+        std::function<void(node_interfaces::LifecycleNodeInterface::CallbackReturn)>
+            finalizing_cb)
         : post_udtf_cb_(post_udtf_cb), 
-          post_error_handling_cb_(post_error_handling_cb), 
+          post_error_handling_cb_(post_error_handling_cb),
+          finalizing_cb_(finalizing_cb),
           stage_(ChangeStateStage::READY)
     {
     }
@@ -18,14 +21,14 @@ namespace rclcpp_lifecycle
     ChangeStateHandler::continue_change_state(
         node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code)
     {
-        if(stage_ == ChangeStateStage::PRE_UDTF)
+        if(stage_ == ChangeStateStage::PRE_UDTF) // normal UDTF was just called
         {
             stage_ = ChangeStateStage::POST_UDTF;
             post_udtf_cb_(cb_return_code);
         }
-        else if(stage_ == ChangeStateStage::POST_UDTF)
+        else if(stage_ == ChangeStateStage::POST_ERROR_HANDLING) // ERROR UDTF
         {
-            stage_ = ChangeStateStage::POST_ERROR_HANDLING;
+            stage_ = ChangeStateStage::FINALIZING;
             post_error_handling_cb_(cb_return_code);
         }
         // TODO @tgroechel: what to do in case of failure here? Could assert or log warning/error or throw exception?

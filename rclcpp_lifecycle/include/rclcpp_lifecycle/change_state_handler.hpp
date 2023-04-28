@@ -22,7 +22,9 @@ public:
         std::function<void(node_interfaces::LifecycleNodeInterface::CallbackReturn)>
             post_udtf_cb,
         std::function<void(node_interfaces::LifecycleNodeInterface::CallbackReturn)>
-            post_error_handling_cb);
+            post_error_handling_cb,
+        std::function<void(node_interfaces::LifecycleNodeInterface::CallbackReturn)>
+            finalizing_cb);
 
     void continue_change_state(node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code);
 
@@ -50,6 +52,8 @@ private:
         post_udtf_cb_;
     std::function<void(node_interfaces::LifecycleNodeInterface::CallbackReturn)>
         post_error_handling_cb_;
+    std::function<void(node_interfaces::LifecycleNodeInterface::CallbackReturn)>
+        finalizing_cb_;
     const std::shared_ptr<rclcpp::Service<ChangeStateSrv>> change_state_srv_hdl_; 
     const std::shared_ptr<rmw_request_id_t> header_;
 
@@ -61,8 +65,8 @@ private:
     0. ready to receive a change_state request (srv || trigger)
     1. before primary UDTF (i.e., non-error)
     2. post primary UDTF, before error checking
-    3. post error checking
-    4. returned / responded -> equivalent to 0. ready
+    3. handle error (only happens when UDTF returns error)
+    4. finalizing -> back to ready
 
     CHECKS:
     - on_change_state: check if header set, reject immediately if so
@@ -70,13 +74,22 @@ private:
         - check if state is non-zero, reject immediately if so
         - set status to 1
     */
+   /*
+   READY                -> {STAGED_SRV_REQ, PRE_UDTF}
+   STAGE_SRV_REQ        -> {PRE_UDTF}
+   PRE_UDTF             -> {POST_UDTF}
+   POST_UDTF            -> {POST_ERROR_HANDLING, FINALIZING}
+   POST_ERROR_HANDLING  -> {FINALIZING}
+   FINALIZING           -> {READY}
+   */
    enum ChangeStateStage
    {
         READY,
         STAGED_SRV_REQ, // this is used as a passthrough for change_state when coming from srv
-        PRE_UDTF, // TODO @tgroechel: once I rename the callback functions, these should also be renamed to PRE_USER_TRANSITION_CALLBACK
+        PRE_UDTF, // TODO @tgroechel: once I rename the callback functions, these should also be renamed to PRE_USER_TRANSITION_CALLBACK/PRE_USER_TRANSITION_FUNCTION
         POST_UDTF,
-        POST_ERROR_HANDLING
+        POST_ERROR_HANDLING,
+        FINALIZING
    };
 
    ChangeStateStage stage_;
