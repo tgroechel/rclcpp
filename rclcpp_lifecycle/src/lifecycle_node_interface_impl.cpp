@@ -457,6 +457,19 @@ LifecycleNode::LifecycleNodeInterfaceImpl::change_state_async(
   }
 }
 
+const char *
+LifecycleNode::LifecycleNodeInterfaceImpl::get_label_for_return_code(
+  node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code)
+{
+  auto cb_id = static_cast<uint8_t>(cb_return_code);
+  if (cb_id == lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_SUCCESS) {
+    return rcl_lifecycle_transition_success_label;
+  } else if (cb_id == lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_FAILURE) {
+    return rcl_lifecycle_transition_failure_label;
+  }
+  return rcl_lifecycle_transition_error_label;
+}  
+
 void
 LifecycleNode::LifecycleNodeInterfaceImpl::change_state_async_cb(
   node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code)
@@ -465,17 +478,6 @@ LifecycleNode::LifecycleNodeInterfaceImpl::change_state_async_cb(
   unsigned int current_state_id; // TODO @tgroechel: fix with passing over state info
   State initial_state; // TODO @tgroechel: fix with passing over state info 
 
-  // TODO @tgroechel: pull this out into a helper, no idea why it is a lambda
-  auto get_label_for_return_code =
-  [](node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code) -> const char *{
-    auto cb_id = static_cast<uint8_t>(cb_return_code);
-    if (cb_id == lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_SUCCESS) {
-      return rcl_lifecycle_transition_success_label;
-    } else if (cb_id == lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_FAILURE) {
-      return rcl_lifecycle_transition_failure_label;
-    }
-    return rcl_lifecycle_transition_error_label;
-  };
   auto transition_label = get_label_for_return_code(cb_return_code);
 
   {

@@ -160,6 +160,9 @@ private:
   void
   execute_async_callback(unsigned int cb_id, const State & previous_state, std::shared_ptr<ChangeStateHandler> async_change_state);
 
+  const char *
+  get_label_for_return_code(node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code);
+
   mutable std::recursive_mutex state_machine_mutex_;
   rcl_lifecycle_state_machine_t state_machine_;
   State current_state_;
