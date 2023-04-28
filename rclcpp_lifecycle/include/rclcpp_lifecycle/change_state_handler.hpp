@@ -18,7 +18,6 @@ namespace rclcpp_lifecycle
 // TODO @tgroechel: comments for functions same as rclcpp style
 // TODO @tgroechel: this is likely going to handle much more given we need to deal with internal trigger
 //                  give this the capability to understand if it is doing an internal transition or not
-// TODO @tgroechel: rename this to ChangeStateHandler as this will handle all the change state requests
 class ChangeStateHandler
 {
 public:
@@ -49,5 +48,23 @@ private:
     const std::shared_ptr<rclcpp::Service<ChangeStateSrv>> change_state_srv_hdl_; 
     const std::shared_ptr<rmw_request_id_t> header_;
     std::atomic<bool> in_transition_{false}; // TODO @tgroechel: this can be figured out via the state_machine so possibly just reflect/use that within impl
+
+    /*
+    These are the theoretical states of a `change_state` request
+    Note that a CS request can come either from a `ChangeState` srv call processed by `on_change_state`
+    Or it can come from internal CS calls using `trigger` functions (often used in tests)
+
+    0. ready to receive a change_state request (srv || trigger)
+    1. before primary UDTF (i.e., non-error)
+    2. post primary UDTF, before error checking
+    3. post error checking
+    4. returned / responded
+
+    CHECKS:
+    - on_change_state: check if header set, reject immediately if so
+    - change_state: (run like a standard coroutine)
+        - check if state is non-zero, reject immediately if so
+        - set status to 1
+    */
 };
 } // namespace rclcpp_lifecycle
