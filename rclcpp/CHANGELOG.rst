@@ -2,6 +2,38 @@
 Changelog for package rclcpp
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+21.1.0 (2023-04-27)
+-------------------
+
+21.0.0 (2023-04-18)
+-------------------
+* Add support for logging service. (`#2122 <https://github.com/ros2/rclcpp/issues/2122>`_)
+* Picking ABI-incompatible executor changes (`#2170 <https://github.com/ros2/rclcpp/issues/2170>`_)
+* add events-executor and timers-manager in rclcpp (`#2155 <https://github.com/ros2/rclcpp/issues/2155>`_)
+* Create common structures for executors to use (`#2143 <https://github.com/ros2/rclcpp/issues/2143>`_)
+* Implement deliver message kind (`#2168 <https://github.com/ros2/rclcpp/issues/2168>`_)
+* Contributors: Alberto Soragna, Lei Liu, Michael Carroll, methylDragon
+
+20.0.0 (2023-04-13)
+-------------------
+* applied tracepoints for ring_buffer (`#2091 <https://github.com/ros2/rclcpp/issues/2091>`_)
+* Dynamic Subscription (REP-2011 Subset): Stubs for rclcpp (`#2165 <https://github.com/ros2/rclcpp/issues/2165>`_)
+* Add type_hash to cpp TopicEndpointInfo (`#2137 <https://github.com/ros2/rclcpp/issues/2137>`_)
+* Trigger the intraprocess guard condition with data (`#2164 <https://github.com/ros2/rclcpp/issues/2164>`_)
+* Minor grammar fix (`#2149 <https://github.com/ros2/rclcpp/issues/2149>`_)
+* Fix unnecessary allocations in executor.cpp (`#2135 <https://github.com/ros2/rclcpp/issues/2135>`_)
+* add Logger::get_effective_level(). (`#2141 <https://github.com/ros2/rclcpp/issues/2141>`_)
+* Remove deprecated header (`#2139 <https://github.com/ros2/rclcpp/issues/2139>`_)
+* Implement matched event (`#2105 <https://github.com/ros2/rclcpp/issues/2105>`_)
+* use allocator via init_options argument. (`#2129 <https://github.com/ros2/rclcpp/issues/2129>`_)
+* Fixes to silence some clang warnings. (`#2127 <https://github.com/ros2/rclcpp/issues/2127>`_)
+* Documentation improvements on the executor (`#2125 <https://github.com/ros2/rclcpp/issues/2125>`_)
+* Avoid losing waitable handles while using MultiThreadedExecutor (`#2109 <https://github.com/ros2/rclcpp/issues/2109>`_)
+* Hook up the incompatible type event inside of rclcpp (`#2069 <https://github.com/ros2/rclcpp/issues/2069>`_)
+* Update all rclcpp packages to C++17. (`#2121 <https://github.com/ros2/rclcpp/issues/2121>`_)
+* Fix clang warning: bugprone-use-after-move (`#2116 <https://github.com/ros2/rclcpp/issues/2116>`_)
+* Contributors: Barry Xu, Chris Lalancette, Christopher Wecht, Emerson Knapp, Michael Carroll, Tomoya Fujita, Yadu, mauropasse, methylDragon, ymski
+
 19.3.0 (2023-03-01)
 -------------------
 * Fix memory leak in tracetools::get_symbol() (`#2104 <https://github.com/ros2/rclcpp/issues/2104>`_)

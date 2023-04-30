@@ -3,6 +3,23 @@ Changelog for package rclcpp_lifecycle
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 
+21.1.0 (2023-04-27)
+-------------------
+
+21.0.0 (2023-04-18)
+-------------------
+* Add support for logging service. (`#2122 <https://github.com/ros2/rclcpp/issues/2122>`_)
+* Support publishing loaned messages in LifecyclePublisher (`#2159 <https://github.com/ros2/rclcpp/issues/2159>`_)
+* Contributors: Lei Liu, Michael Babenko
+
+20.0.0 (2023-04-13)
+-------------------
+* Fixes to silence some clang warnings. (`#2127 <https://github.com/ros2/rclcpp/issues/2127>`_)
+* Update all rclcpp packages to C++17. (`#2121 <https://github.com/ros2/rclcpp/issues/2121>`_)
+* Use the correct macro for LifecycleNode::get_fully_qualified_name (`#2117 <https://github.com/ros2/rclcpp/issues/2117>`_)
+* add get_fully_qualified_name to rclcpp_lifecycle (`#2115 <https://github.com/ros2/rclcpp/issues/2115>`_)
+* Contributors: Chris Lalancette, Steve Macenski
+
 19.3.0 (2023-03-01)
 -------------------
 
