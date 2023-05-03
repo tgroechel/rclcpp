@@ -31,7 +31,6 @@ ChangeStateHandlerImpl::ChangeStateHandlerImpl(
 {
 }
 
-// MUTEX_TODO @tgroechel: user code can call this which means that it needs thread safety...
 void
 ChangeStateHandlerImpl::continue_change_state(
     node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code)
@@ -60,6 +59,12 @@ ChangeStateHandlerImpl::continue_change_state(
     {
         finalize_change_state_cb_(cb_return_code);
     }
+}
+
+bool 
+ChangeStateHandlerImpl::is_processing_change_state_req()
+{
+  return !is_ready() && !has_staged_srv_req();
 }
 
 bool

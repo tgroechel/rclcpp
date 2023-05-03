@@ -43,6 +43,7 @@ public:
 
   bool is_ready();
   bool has_staged_srv_req();
+  bool is_processing_change_state_req();
   void start_change_state();
   void set_change_state_srv_hdl(
     const std::shared_ptr<rclcpp::Service<ChangeStateSrv>> change_state_srv_hdl);

@@ -204,8 +204,6 @@ LifecycleNode::LifecycleNodeInterfaceImpl::init(bool enable_communication_interf
   }
 }
 
-// NOTE @tgroechel: why do these return bool?
-// ANSWER: no apparent reason to me but not worth fixing in PR imo
 bool
 LifecycleNode::LifecycleNodeInterfaceImpl::register_callback(
   std::uint8_t lifecycle_transition,
@@ -237,18 +235,18 @@ LifecycleNode::LifecycleNodeInterfaceImpl::on_change_state(
     const std::shared_ptr<rmw_request_id_t> header,
     const std::shared_ptr<ChangeStateSrv::Request> req)
 {
-  if(!change_state_hdl->is_ready())
-  {
-    ChangeStateSrv::Response resp;
-    resp.success = false;
-    srv_change_state_->send_response(*header, resp);
-    return;
-  }
-  change_state_hdl->set_rmw_request_id_header(header);
-
   std::uint8_t transition_id;
   {
     std::lock_guard<std::recursive_mutex> lock(state_machine_mutex_);
+    if(!change_state_hdl->is_ready())
+    {
+      ChangeStateSrv::Response resp;
+      resp.success = false;
+      srv_change_state_->send_response(*header, resp);
+      return;
+    }
+    change_state_hdl->set_rmw_request_id_header(header);
+
     if (rcl_lifecycle_state_machine_is_initialized(&state_machine_) != RCL_RET_OK) {
       throw std::runtime_error("Can't get state. State machine is not initialized.");
     }
@@ -514,24 +512,22 @@ LifecycleNode::LifecycleNodeInterfaceImpl::change_state(
   std::uint8_t transition_id,
   node_interfaces::LifecycleNodeInterface::CallbackReturn & cb_return_code)
 {
-  // TODO @tgroechel: not thread safe I'm pretty sure, general thread safety will need to be implemented 
-  //                  while thinking about the `state_machine_mutex_`
-  if(!change_state_hdl->is_ready() &&
-     !change_state_hdl->has_staged_srv_req())
-  {
-    // Do not call to change_state_hdl->rcl_ret_error(); doing so invalidates the ongoing change_state transition
-    // This is not necessary as any invalid on_change_state srv request would have handled an error response 
-    // to the respective server in on_change_state
-    return RCL_RET_ERROR;
-  }
-  change_state_hdl->start_change_state();
-  change_state_hdl->transition_id_ = transition_id;
-
-  constexpr bool publish_update = true;
-  unsigned int current_state_id;
-
   {
     std::lock_guard<std::recursive_mutex> lock(state_machine_mutex_);
+    
+    if(change_state_hdl->is_processing_change_state_req())
+    {
+      // Do not call to change_state_hdl->rcl_ret_error(); doing so invalidates the ongoing change_state transition
+      // This is not necessary as any invalid on_change_state srv request would have handled an error response 
+      // to the respective server in on_change_state
+      return RCL_RET_ERROR;
+    }
+    change_state_hdl->start_change_state();
+    change_state_hdl->transition_id_ = transition_id;
+
+    constexpr bool publish_update = true;
+    unsigned int current_state_id;
+
     if (rcl_lifecycle_state_machine_is_initialized(&state_machine_) != RCL_RET_OK) {
       RCUTILS_LOG_ERROR(
         "Unable to change state for state machine for %s: %s",
