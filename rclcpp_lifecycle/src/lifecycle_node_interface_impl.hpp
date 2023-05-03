@@ -35,6 +35,7 @@
 #include "rclcpp/node_interfaces/node_services_interface.hpp"
 
 #include "rclcpp_lifecycle/node_interfaces/lifecycle_node_interface.hpp"
+#include "change_state_handler_impl.hpp"
 
 #include "rmw/types.h"
 
@@ -63,6 +64,11 @@ public:
   register_callback(
     std::uint8_t lifecycle_transition,
     std::function<node_interfaces::LifecycleNodeInterface::CallbackReturn(const State &)> & cb);
+  
+  bool
+  register_async_callback(
+    std::uint8_t lifecycle_transition,
+    std::function<void(const State &, std::shared_ptr<ChangeStateHandler>)> & cb);
 
   const State &
   get_current_state() const;
@@ -108,8 +114,7 @@ private:
   void
   on_change_state(
     const std::shared_ptr<rmw_request_id_t> header,
-    const std::shared_ptr<ChangeStateSrv::Request> req,
-    std::shared_ptr<ChangeStateSrv::Response> resp);
+    const std::shared_ptr<ChangeStateSrv::Request> req);
 
   void
   on_get_state(
@@ -139,9 +144,34 @@ private:
   change_state(
     std::uint8_t transition_id,
     node_interfaces::LifecycleNodeInterface::CallbackReturn & cb_return_code);
+  
+  void
+  change_state_async(
+    std::uint8_t transition_id);
+
+  void
+  post_user_transition_function_cb(
+    node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code);
+
+  void
+  post_on_error_cb(
+    node_interfaces::LifecycleNodeInterface::CallbackReturn error_cb_code);
+
+  void
+  finalizing_change_state_cb(
+    node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code);
 
   node_interfaces::LifecycleNodeInterface::CallbackReturn
   execute_callback(unsigned int cb_id, const State & previous_state) const;
+
+  void
+  execute_async_callback(unsigned int cb_id, const State & previous_state);
+
+  const char *
+  get_label_for_return_code(node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code);
+
+  bool
+  is_async_callback(unsigned int cb_id) const;
 
   mutable std::recursive_mutex state_machine_mutex_;
   rcl_lifecycle_state_machine_t state_machine_;
@@ -149,6 +179,11 @@ private:
   std::map<
     std::uint8_t,
     std::function<node_interfaces::LifecycleNodeInterface::CallbackReturn(const State &)>> cb_map_;
+  std::map<
+    std::uint8_t,
+    std::function<void(const State &, std::shared_ptr<ChangeStateHandler>)>> async_cb_map_;
+  
+  std::shared_ptr<ChangeStateHandlerImpl> change_state_hdl; // TODO @tgroechel: should this be a unique_ptr?
 
   using NodeBasePtr = std::shared_ptr<rclcpp::node_interfaces::NodeBaseInterface>;
   using NodeServicesPtr = std::shared_ptr<rclcpp::node_interfaces::NodeServicesInterface>;
