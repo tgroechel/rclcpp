@@ -18,45 +18,41 @@
 namespace rclcpp_lifecycle
 {
 ChangeStateHandlerImpl::ChangeStateHandlerImpl(
-    std::function<void(node_interfaces::LifecycleNodeInterface::CallbackReturn)>
-        post_user_transition_function_cb,
-    std::function<void(node_interfaces::LifecycleNodeInterface::CallbackReturn)>
-        post_on_error_cb,
-    std::function<void(node_interfaces::LifecycleNodeInterface::CallbackReturn)>
-        finalize_change_state_cb)
-    : post_user_transition_function_cb_(post_user_transition_function_cb),
-      post_on_error_cb_(post_on_error_cb),
-      finalize_change_state_cb_(finalize_change_state_cb),
-      stage_(ChangeStateStage::READY)
+  std::function<void(node_interfaces::LifecycleNodeInterface::CallbackReturn)>
+  post_user_transition_function_cb,
+  std::function<void(node_interfaces::LifecycleNodeInterface::CallbackReturn)>
+  post_on_error_cb,
+  std::function<void(node_interfaces::LifecycleNodeInterface::CallbackReturn)>
+  finalize_change_state_cb)
+: post_user_transition_function_cb_(post_user_transition_function_cb),
+  post_on_error_cb_(post_on_error_cb),
+  finalize_change_state_cb_(finalize_change_state_cb),
+  stage_(ChangeStateStage::READY)
 {
 }
 
 void
 ChangeStateHandlerImpl::continue_change_state(
-    node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code)
+  node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code)
 {
-    assert(stage_ == ChangeStateStage::PRE_USER_TRANSITION_FUNCTION ||
-           stage_ == ChangeStateStage::POST_USER_TRANSITION_FUNCTION ||
-           stage_ == ChangeStateStage::FINALIZING);
-    
-    cb_return_code_ = cb_return_code;
-    if(stage_ == ChangeStateStage::PRE_USER_TRANSITION_FUNCTION)
-    {
-        stage_ = ChangeStateStage::POST_USER_TRANSITION_FUNCTION;
-        post_user_transition_function_cb_(cb_return_code);
-    }
-    else if(stage_ == ChangeStateStage::POST_USER_TRANSITION_FUNCTION)
-    {
-        stage_ = ChangeStateStage::POST_ON_ERROR;
-        post_on_error_cb_(cb_return_code);
-    }
-    else if(stage_ == ChangeStateStage::FINALIZING)
-    {
-        finalize_change_state_cb_(cb_return_code);
-    }
+  assert(
+    stage_ == ChangeStateStage::PRE_USER_TRANSITION_FUNCTION ||
+    stage_ == ChangeStateStage::POST_USER_TRANSITION_FUNCTION ||
+    stage_ == ChangeStateStage::FINALIZING);
+
+  cb_return_code_ = cb_return_code;
+  if (stage_ == ChangeStateStage::PRE_USER_TRANSITION_FUNCTION) {
+    stage_ = ChangeStateStage::POST_USER_TRANSITION_FUNCTION;
+    post_user_transition_function_cb_(cb_return_code);
+  } else if (stage_ == ChangeStateStage::POST_USER_TRANSITION_FUNCTION) {
+    stage_ = ChangeStateStage::POST_ON_ERROR;
+    post_on_error_cb_(cb_return_code);
+  } else if (stage_ == ChangeStateStage::FINALIZING) {
+    finalize_change_state_cb_(cb_return_code);
+  }
 }
 
-bool 
+bool
 ChangeStateHandlerImpl::is_processing_change_state_req()
 {
   return !is_ready() && !has_staged_srv_req();
@@ -84,22 +80,22 @@ ChangeStateHandlerImpl::start_change_state()
 
 void
 ChangeStateHandlerImpl::set_change_state_srv_hdl(
-    const std::shared_ptr<rclcpp::Service<ChangeStateSrv>> change_state_srv_hdl)
+  const std::shared_ptr<rclcpp::Service<ChangeStateSrv>> change_state_srv_hdl)
 {
   assert(change_state_srv_hdl_ == nullptr);
   change_state_srv_hdl_ = change_state_srv_hdl;
 }
 
-void 
+void
 ChangeStateHandlerImpl::set_rmw_request_id_header(
-    const std::shared_ptr<rmw_request_id_t> header)
+  const std::shared_ptr<rmw_request_id_t> header)
 {
   assert(stage_ == ChangeStateStage::READY);
   stage_ = ChangeStateStage::STAGED_SRV_REQ;
   header_ = header;
 }
 
-void 
+void
 ChangeStateHandlerImpl::no_error_from_user_transition_function()
 {
   assert(stage_ == ChangeStateStage::POST_USER_TRANSITION_FUNCTION);
@@ -115,12 +111,11 @@ ChangeStateHandlerImpl::rcl_ret_error()
 void
 ChangeStateHandlerImpl::finalize_change_state(bool success)
 {
-  if(is_srv_request())
-  {
-      ChangeStateSrv::Response resp;
-      resp.success = success;
-      change_state_srv_hdl_->send_response(*header_, resp);
-      header_.reset();
+  if (is_srv_request()) {
+    ChangeStateSrv::Response resp;
+    resp.success = success;
+    change_state_srv_hdl_->send_response(*header_, resp);
+    header_.reset();
   }
 
   // TODO(karsten1987): Lifecycle msgs have to be extended to keep both returns

@@ -29,9 +29,9 @@ public:
    * \param[in] cb_return_code result of user defined transition callback
    */
   virtual void continue_change_state(
-      node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code) = 0;
+    node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code) = 0;
 
-  virtual ~ChangeStateHandler(){}
+  virtual ~ChangeStateHandler() {}
 };
 } // namespace rclcpp_lifecycle
 

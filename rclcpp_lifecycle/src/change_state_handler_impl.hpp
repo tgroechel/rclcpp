@@ -31,12 +31,12 @@ class ChangeStateHandlerImpl : public ChangeStateHandler
 public:
   using ChangeStateSrv = lifecycle_msgs::srv::ChangeState;
   ChangeStateHandlerImpl(
-      std::function<void(node_interfaces::LifecycleNodeInterface::CallbackReturn)>
-          post_user_transition_function_cb,
-      std::function<void(node_interfaces::LifecycleNodeInterface::CallbackReturn)>
-          post_on_error_cb,
-      std::function<void(node_interfaces::LifecycleNodeInterface::CallbackReturn)>
-          finalize_change_state_cb);
+    std::function<void(node_interfaces::LifecycleNodeInterface::CallbackReturn)>
+    post_user_transition_function_cb,
+    std::function<void(node_interfaces::LifecycleNodeInterface::CallbackReturn)>
+    post_on_error_cb,
+    std::function<void(node_interfaces::LifecycleNodeInterface::CallbackReturn)>
+    finalize_change_state_cb);
 
   void continue_change_state(
     node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code) override;
@@ -48,7 +48,7 @@ public:
   void set_change_state_srv_hdl(
     const std::shared_ptr<rclcpp::Service<ChangeStateSrv>> change_state_srv_hdl);
   void set_rmw_request_id_header(
-    const std::shared_ptr<rmw_request_id_t> header); 
+    const std::shared_ptr<rmw_request_id_t> header);
   void no_error_from_user_transition_function();
   void rcl_ret_error();
   void finalize_change_state(bool success);
@@ -64,13 +64,13 @@ public:
 
 private:
   std::function<void(node_interfaces::LifecycleNodeInterface::CallbackReturn)>
-      post_user_transition_function_cb_;
+  post_user_transition_function_cb_;
   std::function<void(node_interfaces::LifecycleNodeInterface::CallbackReturn)>
-      post_on_error_cb_;
+  post_on_error_cb_;
   std::function<void(node_interfaces::LifecycleNodeInterface::CallbackReturn)>
-      finalize_change_state_cb_;
-  
-  std::shared_ptr<rclcpp::Service<ChangeStateSrv>> change_state_srv_hdl_; 
+  finalize_change_state_cb_;
+
+  std::shared_ptr<rclcpp::Service<ChangeStateSrv>> change_state_srv_hdl_;
   std::shared_ptr<rmw_request_id_t> header_;
 
   /*

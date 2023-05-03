@@ -64,7 +64,7 @@ public:
   register_callback(
     std::uint8_t lifecycle_transition,
     std::function<node_interfaces::LifecycleNodeInterface::CallbackReturn(const State &)> & cb);
-  
+
   bool
   register_async_callback(
     std::uint8_t lifecycle_transition,
@@ -144,7 +144,7 @@ private:
   change_state(
     std::uint8_t transition_id,
     node_interfaces::LifecycleNodeInterface::CallbackReturn & cb_return_code);
-  
+
   void
   change_state_async(
     std::uint8_t transition_id);
@@ -182,7 +182,7 @@ private:
   std::map<
     std::uint8_t,
     std::function<void(const State &, std::shared_ptr<ChangeStateHandler>)>> async_cb_map_;
-  
+
   std::shared_ptr<ChangeStateHandlerImpl> change_state_hdl;
 
   using NodeBasePtr = std::shared_ptr<rclcpp::node_interfaces::NodeBaseInterface>;

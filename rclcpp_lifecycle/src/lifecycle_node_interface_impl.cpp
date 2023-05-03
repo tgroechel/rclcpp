@@ -105,16 +105,19 @@ LifecycleNode::LifecycleNodeInterfaceImpl::init(bool enable_communication_interf
             node_base_interface_->get_name());
   }
   change_state_hdl = std::make_shared<ChangeStateHandlerImpl>(
-          std::bind(&LifecycleNodeInterfaceImpl::post_user_transition_function_cb, 
-            this, 
-            std::placeholders::_1),
-          std::bind(&LifecycleNodeInterfaceImpl::post_on_error_cb, 
-            this, 
-            std::placeholders::_1),
-          std::bind(&LifecycleNodeInterfaceImpl::finalizing_change_state_cb, 
-            this, 
-            std::placeholders::_1));
-          
+    std::bind(
+      &LifecycleNodeInterfaceImpl::post_user_transition_function_cb,
+      this,
+      std::placeholders::_1),
+    std::bind(
+      &LifecycleNodeInterfaceImpl::post_on_error_cb,
+      this,
+      std::placeholders::_1),
+    std::bind(
+      &LifecycleNodeInterfaceImpl::finalizing_change_state_cb,
+      this,
+      std::placeholders::_1));
+
 
   current_state_ = State(state_machine_.current_state);
 
@@ -232,14 +235,13 @@ LifecycleNode::LifecycleNodeInterfaceImpl::register_async_callback(
 
 void
 LifecycleNode::LifecycleNodeInterfaceImpl::on_change_state(
-    const std::shared_ptr<rmw_request_id_t> header,
-    const std::shared_ptr<ChangeStateSrv::Request> req)
+  const std::shared_ptr<rmw_request_id_t> header,
+  const std::shared_ptr<ChangeStateSrv::Request> req)
 {
   std::uint8_t transition_id;
   {
     std::lock_guard<std::recursive_mutex> lock(state_machine_mutex_);
-    if(!change_state_hdl->is_ready())
-    {
+    if (!change_state_hdl->is_ready()) {
       ChangeStateSrv::Response resp;
       resp.success = false;
       srv_change_state_->send_response(*header, resp);
@@ -263,10 +265,8 @@ LifecycleNode::LifecycleNodeInterfaceImpl::on_change_state(
         return;
       }
       transition_id = static_cast<std::uint8_t>(rcl_transition->id);
-    }
-    else
-    {
-      transition_id = req->transition.id; 
+    } else {
+      transition_id = req->transition.id;
     }
   }
 
@@ -426,7 +426,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::get_label_for_return_code(
     return rcl_lifecycle_transition_failure_label;
   }
   return rcl_lifecycle_transition_error_label;
-}  
+}
 
 void
 LifecycleNode::LifecycleNodeInterfaceImpl::post_user_transition_function_cb(
@@ -445,9 +445,9 @@ LifecycleNode::LifecycleNodeInterfaceImpl::post_user_transition_function_cb(
     {
       RCUTILS_LOG_ERROR(
         "Failed to finish transition %u: fix this call. Current state is now: %s (%s)",
-          change_state_hdl->transition_id_,
-          state_machine_.current_state->label, 
-          rcl_get_error_string().str);
+        change_state_hdl->transition_id_,
+        state_machine_.current_state->label,
+        rcl_get_error_string().str);
       rcutils_reset_error();
       change_state_hdl->rcl_ret_error();
       return;
@@ -462,18 +462,15 @@ LifecycleNode::LifecycleNodeInterfaceImpl::post_user_transition_function_cb(
   // TODO(karsten1987): iterate over possible ret value
   if (cb_return_code == node_interfaces::LifecycleNodeInterface::CallbackReturn::ERROR) {
     RCUTILS_LOG_WARN("Error occurred while doing error handling.");
-    if(is_async_callback(current_state_id))
-    {
+    if (is_async_callback(current_state_id)) {
       execute_async_callback(current_state_id, change_state_hdl->pre_transition_primary_state_);
-    }
-    else
-    {
-      auto error_cb_code = execute_callback(current_state_id, change_state_hdl->pre_transition_primary_state_);
+    } else {
+      auto error_cb_code = execute_callback(
+        current_state_id,
+        change_state_hdl->pre_transition_primary_state_);
       change_state_hdl->continue_change_state(error_cb_code);
     }
-  }
-  else
-  {
+  } else {
     change_state_hdl->no_error_from_user_transition_function();
     change_state_hdl->continue_change_state(cb_return_code);
   }
@@ -514,11 +511,10 @@ LifecycleNode::LifecycleNodeInterfaceImpl::change_state(
 {
   {
     std::lock_guard<std::recursive_mutex> lock(state_machine_mutex_);
-    
-    if(change_state_hdl->is_processing_change_state_req())
-    {
+
+    if (change_state_hdl->is_processing_change_state_req()) {
       // Do not call to change_state_hdl->rcl_ret_error(); doing so invalidates the ongoing change_state transition
-      // This is not necessary as any invalid on_change_state srv request would have handled an error response 
+      // This is not necessary as any invalid on_change_state srv request would have handled an error response
       // to the respective server in on_change_state
       return RCL_RET_ERROR;
     }
@@ -545,7 +541,8 @@ LifecycleNode::LifecycleNodeInterfaceImpl::change_state(
     {
       RCUTILS_LOG_ERROR(
         "Unable to start transition %u from current state %s: %s",
-        change_state_hdl->transition_id_, state_machine_.current_state->label, rcl_get_error_string().str);
+        change_state_hdl->transition_id_, state_machine_.current_state->label,
+        rcl_get_error_string().str);
       rcutils_reset_error();
       change_state_hdl->rcl_ret_error();
       return RCL_RET_ERROR;
@@ -556,14 +553,12 @@ LifecycleNode::LifecycleNodeInterfaceImpl::change_state(
   // Update the internal current_state_
   current_state_ = State(state_machine_.current_state);
 
-  if(is_async_callback(current_state_id))
-  {
+  if (is_async_callback(current_state_id)) {
     execute_async_callback(current_state_id, change_state_hdl->pre_transition_primary_state_);
-  }
-  else
-  {
-    cb_return_code = execute_callback(current_state_id, 
-                                      change_state_hdl->pre_transition_primary_state_);
+  } else {
+    cb_return_code = execute_callback(
+      current_state_id,
+      change_state_hdl->pre_transition_primary_state_);
     change_state_hdl->continue_change_state(cb_return_code);
   }
 
@@ -595,7 +590,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::execute_callback(
 
 void
 LifecycleNode::LifecycleNodeInterfaceImpl::execute_async_callback(
-  unsigned int cb_id, 
+  unsigned int cb_id,
   const State & previous_state)
 {
   auto it = async_cb_map_.find(static_cast<uint8_t>(cb_id));
@@ -609,8 +604,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::execute_async_callback(
       change_state_hdl->continue_change_state(
         node_interfaces::LifecycleNodeInterface::CallbackReturn::ERROR);
     }
-  }
-  else{
+  } else {
     // Note that is_async_callback should be called before execute_async_callback
     // therefor this should never run
     // However, to be consistent with execute_callback:
