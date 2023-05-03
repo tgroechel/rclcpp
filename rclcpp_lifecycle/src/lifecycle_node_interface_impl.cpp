@@ -509,6 +509,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::change_state(
   std::uint8_t transition_id,
   node_interfaces::LifecycleNodeInterface::CallbackReturn & cb_return_code)
 {
+  unsigned int current_state_id;
   {
     std::lock_guard<std::recursive_mutex> lock(state_machine_mutex_);
 
@@ -522,7 +523,6 @@ LifecycleNode::LifecycleNodeInterfaceImpl::change_state(
     change_state_hdl->transition_id_ = transition_id;
 
     constexpr bool publish_update = true;
-    unsigned int current_state_id;
 
     if (rcl_lifecycle_state_machine_is_initialized(&state_machine_) != RCL_RET_OK) {
       RCUTILS_LOG_ERROR(
