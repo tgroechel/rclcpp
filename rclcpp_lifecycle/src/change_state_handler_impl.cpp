@@ -35,11 +35,6 @@ void
 ChangeStateHandlerImpl::continue_change_state(
     node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code)
 {
-    // TODO @tgroechel: what to do in case of failure here? Could assert or log warning/error or throw exception? Silently do nothing?
-    //                  Two times I think this could happen off the top of my head:
-    //                  1. user defined transition callback calls this too many times, 
-    //                     we wouldn't know how many incorrect times this had happened unless we had flags tracking it which could be easily added
-    //                  2. error within implementation of lifecycle_node_interface_impl
     assert(stage_ == ChangeStateStage::PRE_USER_TRANSITION_FUNCTION ||
            stage_ == ChangeStateStage::POST_USER_TRANSITION_FUNCTION ||
            stage_ == ChangeStateStage::FINALIZING);
