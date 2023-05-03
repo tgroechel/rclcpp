@@ -35,7 +35,7 @@
 #include "rclcpp/node_interfaces/node_services_interface.hpp"
 
 #include "rclcpp_lifecycle/node_interfaces/lifecycle_node_interface.hpp"
-#include "rclcpp_lifecycle/async_change_state_handler.hpp"
+#include "change_state_handler_impl.hpp"
 
 #include "rmw/types.h"
 
@@ -113,7 +113,6 @@ private:
 
   void
   on_change_state(
-    const std::shared_ptr<rclcpp::Service<ChangeStateSrv>> change_state_hdl,
     const std::shared_ptr<rmw_request_id_t> header,
     const std::shared_ptr<ChangeStateSrv::Request> req);
 
@@ -151,19 +150,28 @@ private:
     std::uint8_t transition_id);
 
   void
-  post_udtf_cb(
+  post_user_transition_function_cb(
     node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code);
 
+  void
+  post_on_error_cb(
+    node_interfaces::LifecycleNodeInterface::CallbackReturn error_cb_code);
+
+  void
+  finalizing_change_state_cb(
+    node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code);
 
   node_interfaces::LifecycleNodeInterface::CallbackReturn
   execute_callback(unsigned int cb_id, const State & previous_state) const;
+
   void
-  execute_async_callback(unsigned int cb_id, const State & previous_state, std::shared_ptr<ChangeStateHandler> async_change_state);
+  execute_async_callback(unsigned int cb_id, const State & previous_state);
 
   const char *
   get_label_for_return_code(node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code);
 
-  // TODO @tgroechel: pull over all functions to have header defintions from cpp file to here
+  bool
+  is_async_callback(unsigned int cb_id) const;
 
   mutable std::recursive_mutex state_machine_mutex_;
   rcl_lifecycle_state_machine_t state_machine_;
@@ -175,7 +183,7 @@ private:
     std::uint8_t,
     std::function<void(const State &, std::shared_ptr<ChangeStateHandler>)>> async_cb_map_;
   
-  std::shared_ptr<ChangeStateHandler> change_state_hdl; // TODO @tgroechel: should this be a unique_ptr?
+  std::shared_ptr<ChangeStateHandlerImpl> change_state_hdl; // TODO @tgroechel: should this be a unique_ptr?
 
   using NodeBasePtr = std::shared_ptr<rclcpp::node_interfaces::NodeBaseInterface>;
   using NodeServicesPtr = std::shared_ptr<rclcpp::node_interfaces::NodeServicesInterface>;
