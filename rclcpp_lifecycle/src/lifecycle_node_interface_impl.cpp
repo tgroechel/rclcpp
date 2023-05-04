@@ -104,6 +104,11 @@ LifecycleNode::LifecycleNodeInterfaceImpl::init(bool enable_communication_interf
             std::string("Couldn't initialize state machine for node ") +
             node_base_interface_->get_name());
   }
+  change_state_hdl = std::make_shared<ChangeStateHandlerImpl>(
+    std::ref(state_machine_mutex_),
+    std::ref(state_machine_),
+    std::ref(current_state_),
+    node_base_interface_);
 
   current_state_ = State(state_machine_.current_state);
 
@@ -111,7 +116,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::init(bool enable_communication_interf
     { // change_state
       auto cb = std::bind(
         &LifecycleNode::LifecycleNodeInterfaceImpl::on_change_state, this,
-        std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
+        std::placeholders::_1, std::placeholders::_2);
       rclcpp::AnyServiceCallback<ChangeStateSrv> any_cb;
       any_cb.set(std::move(cb));
 
@@ -122,6 +127,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::init(bool enable_communication_interf
       node_services_interface_->add_service(
         std::dynamic_pointer_cast<rclcpp::ServiceBase>(srv_change_state_),
         nullptr);
+      change_state_hdl->set_change_state_srv_hdl(srv_change_state_);
     }
 
     { // get_state
@@ -197,52 +203,55 @@ LifecycleNode::LifecycleNodeInterfaceImpl::register_callback(
   std::uint8_t lifecycle_transition,
   std::function<node_interfaces::LifecycleNodeInterface::CallbackReturn(const State &)> & cb)
 {
-  cb_map_[lifecycle_transition] = cb;
-  return true;
+  return change_state_hdl->register_callback(lifecycle_transition, cb);
+}
+
+bool
+LifecycleNode::LifecycleNodeInterfaceImpl::register_async_callback(
+  std::uint8_t lifecycle_transition,
+  std::function<void(const State &, std::shared_ptr<ChangeStateHandler>)> & cb)
+{
+  return change_state_hdl->register_async_callback(lifecycle_transition, cb);
 }
 
 void
 LifecycleNode::LifecycleNodeInterfaceImpl::on_change_state(
   const std::shared_ptr<rmw_request_id_t> header,
-  const std::shared_ptr<ChangeStateSrv::Request> req,
-  std::shared_ptr<ChangeStateSrv::Response> resp)
+  const std::shared_ptr<ChangeStateSrv::Request> req)
 {
-  (void)header;
   std::uint8_t transition_id;
   {
     std::lock_guard<std::recursive_mutex> lock(state_machine_mutex_);
+
     if (rcl_lifecycle_state_machine_is_initialized(&state_machine_) != RCL_RET_OK) {
       throw std::runtime_error("Can't get state. State machine is not initialized.");
     }
-
-    transition_id = req->transition.id;
-    // if there's a label attached to the request,
-    // we check the transition attached to this label.
-    // we further can't compare the id of the looked up transition
-    // because ros2 service call defaults all intergers to zero.
-    // that means if we call ros2 service call ... {transition: {label: shutdown}}
-    // the id of the request is 0 (zero) whereas the id from the lookup up transition
-    // can be different.
-    // the result of this is that the label takes presedence of the id.
+    // Use transition.label over transition.id if transition.label exits
+    // label has higher precedence to the id due to ROS 2 defaulting integers to 0
+    // e.g.: srv call of {transition: {label: configure}}
+    //       transition.id    = 0           -> would be equiv to "create"
+    //       transition.label = "configure" -> id is 1, use this
     if (req->transition.label.size() != 0) {
       auto rcl_transition = rcl_lifecycle_get_transition_by_label(
         state_machine_.current_state, req->transition.label.c_str());
       if (rcl_transition == nullptr) {
-        resp->success = false;
+        // send fail response printing out the requested label
+        RCUTILS_LOG_ERROR(
+          "ChangeState srv request failed: Transition label '%s'"
+          " is not available in the current state '%s'",
+          req->transition.label.c_str(), state_machine_.current_state->label);
+        ChangeStateSrv::Response resp;
+        resp.success = false;
+        srv_change_state_->send_response(*header, resp);
         return;
       }
       transition_id = static_cast<std::uint8_t>(rcl_transition->id);
+    } else {
+      transition_id = req->transition.id;
     }
   }
 
-  node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code;
-  auto ret = change_state(transition_id, cb_return_code);
-  (void) ret;
-  // TODO(karsten1987): Lifecycle msgs have to be extended to keep both returns
-  // 1. return is the actual transition
-  // 2. return is whether an error occurred or not
-  resp->success =
-    (cb_return_code == node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS);
+  change_state_hdl->change_state(transition_id, header);
 }
 
 void
@@ -391,116 +400,11 @@ LifecycleNode::LifecycleNodeInterfaceImpl::change_state(
   std::uint8_t transition_id,
   node_interfaces::LifecycleNodeInterface::CallbackReturn & cb_return_code)
 {
-  constexpr bool publish_update = true;
-  State initial_state;
-  unsigned int current_state_id;
-
-  {
-    std::lock_guard<std::recursive_mutex> lock(state_machine_mutex_);
-    if (rcl_lifecycle_state_machine_is_initialized(&state_machine_) != RCL_RET_OK) {
-      RCUTILS_LOG_ERROR(
-        "Unable to change state for state machine for %s: %s",
-        node_base_interface_->get_name(), rcl_get_error_string().str);
-      return RCL_RET_ERROR;
-    }
-
-    // keep the initial state to pass to a transition callback
-    initial_state = State(state_machine_.current_state);
-
-    if (
-      rcl_lifecycle_trigger_transition_by_id(
-        &state_machine_, transition_id, publish_update) != RCL_RET_OK)
-    {
-      RCUTILS_LOG_ERROR(
-        "Unable to start transition %u from current state %s: %s",
-        transition_id, state_machine_.current_state->label, rcl_get_error_string().str);
-      rcutils_reset_error();
-      return RCL_RET_ERROR;
-    }
-    current_state_id = state_machine_.current_state->id;
-  }
-
-  // Update the internal current_state_
-  current_state_ = State(state_machine_.current_state);
-
-  auto get_label_for_return_code =
-    [](node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code) -> const char *{
-      auto cb_id = static_cast<uint8_t>(cb_return_code);
-      if (cb_id == lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_SUCCESS) {
-        return rcl_lifecycle_transition_success_label;
-      } else if (cb_id == lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_FAILURE) {
-        return rcl_lifecycle_transition_failure_label;
-      }
-      return rcl_lifecycle_transition_error_label;
-    };
-
-  cb_return_code = execute_callback(current_state_id, initial_state);
-  auto transition_label = get_label_for_return_code(cb_return_code);
-
-  {
-    std::lock_guard<std::recursive_mutex> lock(state_machine_mutex_);
-    if (
-      rcl_lifecycle_trigger_transition_by_label(
-        &state_machine_, transition_label, publish_update) != RCL_RET_OK)
-    {
-      RCUTILS_LOG_ERROR(
-        "Failed to finish transition %u. Current state is now: %s (%s)",
-        transition_id, state_machine_.current_state->label, rcl_get_error_string().str);
-      rcutils_reset_error();
-      return RCL_RET_ERROR;
-    }
-    current_state_id = state_machine_.current_state->id;
-  }
-
-  // Update the internal current_state_
-  current_state_ = State(state_machine_.current_state);
-
-  // error handling ?!
-  // TODO(karsten1987): iterate over possible ret value
-  if (cb_return_code == node_interfaces::LifecycleNodeInterface::CallbackReturn::ERROR) {
-    RCUTILS_LOG_WARN("Error occurred while doing error handling.");
-
-    auto error_cb_code = execute_callback(current_state_id, initial_state);
-    auto error_cb_label = get_label_for_return_code(error_cb_code);
-    std::lock_guard<std::recursive_mutex> lock(state_machine_mutex_);
-    if (
-      rcl_lifecycle_trigger_transition_by_label(
-        &state_machine_, error_cb_label, publish_update) != RCL_RET_OK)
-    {
-      RCUTILS_LOG_ERROR("Failed to call cleanup on error state: %s", rcl_get_error_string().str);
-      rcutils_reset_error();
-      return RCL_RET_ERROR;
-    }
-  }
-
-  // Update the internal current_state_
-  current_state_ = State(state_machine_.current_state);
-
-  // This true holds in both cases where the actual callback
-  // was successful or not, since at this point we have a valid transistion
-  // to either a new primary state or error state
-  return RCL_RET_OK;
-}
-
-node_interfaces::LifecycleNodeInterface::CallbackReturn
-LifecycleNode::LifecycleNodeInterfaceImpl::execute_callback(
-  unsigned int cb_id, const State & previous_state) const
-{
-  // in case no callback was attached, we forward directly
-  auto cb_success = node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS;
-
-  auto it = cb_map_.find(static_cast<uint8_t>(cb_id));
-  if (it != cb_map_.end()) {
-    auto callback = it->second;
-    try {
-      cb_success = callback(State(previous_state));
-    } catch (const std::exception & e) {
-      RCUTILS_LOG_ERROR("Caught exception in callback for transition %d", it->first);
-      RCUTILS_LOG_ERROR("Original error: %s", e.what());
-      cb_success = node_interfaces::LifecycleNodeInterface::CallbackReturn::ERROR;
-    }
-  }
-  return cb_success;
+  change_state_hdl->change_state(transition_id);
+  // Set the reference cb_return_code to the last held one
+  // to hold consistency with prior implementation
+  cb_return_code = change_state_hdl->cb_return_code_;
+  return change_state_hdl->rcl_ret_;
 }
 
 const State & LifecycleNode::LifecycleNodeInterfaceImpl::trigger_transition(
