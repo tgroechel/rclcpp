@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef RCLCPP_LIFECYCLE__CHANGE_STATE_HANDLER_IMPL_HPP_
-#define RCLCPP_LIFECYCLE__CHANGE_STATE_HANDLER_IMPL_HPP_
+#ifndef CHANGE_STATE_HANDLER_IMPL_HPP_
+#define CHANGE_STATE_HANDLER_IMPL_HPP_
 
 #include "rclcpp_lifecycle/change_state_handler.hpp"
 
@@ -94,6 +94,6 @@ private:
 
   ChangeStateStage stage_;
 };
-} // namespace rclcpp_lifecycle
+}  // namespace rclcpp_lifecycle
 
-#endif // RCLCPP_LIFECYCLE__CHANGE_STATE_HANDLER_IMPL_HPP_
+#endif  // CHANGE_STATE_HANDLER_IMPL_HPP_

@@ -137,4 +137,4 @@ ChangeStateHandlerImpl::~ChangeStateHandlerImpl()
   change_state_srv_hdl_.reset();
 }
 
-} // namespace rclcpp_lifecycle
+}  // namespace rclcpp_lifecycle

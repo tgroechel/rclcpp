@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef CHANGE_STATE_HANDLER_HPP_
-#define CHANGE_STATE_HANDLER_HPP_
+#ifndef RCLCPP_LIFECYCLE__CHANGE_STATE_HANDLER_HPP_
+#define RCLCPP_LIFECYCLE__CHANGE_STATE_HANDLER_HPP_
 
 #include "rclcpp_lifecycle/node_interfaces/lifecycle_node_interface.hpp"
 
@@ -33,6 +33,6 @@ public:
 
   virtual ~ChangeStateHandler() {}
 };
-} // namespace rclcpp_lifecycle
+}  // namespace rclcpp_lifecycle
 
-#endif // CHANGE_STATE_HANDLER_HPP_
+#endif  // RCLCPP_LIFECYCLE__CHANGE_STATE_HANDLER_HPP_
