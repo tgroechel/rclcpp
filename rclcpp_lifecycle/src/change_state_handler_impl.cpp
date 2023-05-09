@@ -21,23 +21,17 @@
 namespace rclcpp_lifecycle
 {
 ChangeStateHandlerImpl::ChangeStateHandlerImpl(
+  const std::shared_ptr<rclcpp::Service<ChangeStateSrv>> change_state_srv_hdl,
   std::recursive_mutex & state_machine_mutex,
   rcl_lifecycle_state_machine_t & state_machine,
   State & current_state,
   const std::shared_ptr<rclcpp::node_interfaces::NodeBaseInterface> node_base_interface)
-: state_machine_mutex_(state_machine_mutex),
+: change_state_srv_hdl_(change_state_srv_hdl),
+  state_machine_mutex_(state_machine_mutex),
   state_machine_(state_machine),
   current_state_(current_state),
   node_base_interface_(node_base_interface)
 {
-}
-
-void
-ChangeStateHandlerImpl::set_change_state_srv_hdl(
-  const std::shared_ptr<rclcpp::Service<ChangeStateSrv>> change_state_srv_hdl)
-{
-  assert(change_state_srv_hdl_ == nullptr);
-  change_state_srv_hdl_ = change_state_srv_hdl;
 }
 
 bool
@@ -67,25 +61,16 @@ ChangeStateHandlerImpl::register_async_callback(
 }
 
 void
-ChangeStateHandlerImpl::continue_change_state(
+ChangeStateHandlerImpl::send_callback_resp(
   node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code)
 {
-  unsigned int current_state_id;
-  {
-    std::lock_guard<std::recursive_mutex> lock(state_machine_mutex_);
-    current_state_id = state_machine_.current_state->id;
-  }
-
-  if (current_state_id ==
-    lifecycle_msgs::msg::State::TRANSITION_STATE_ERRORPROCESSING)
-  {
-    post_on_error_change_state(cb_return_code);
-  } else if (!utf_has_been_called_.load()) {
-    utf_has_been_called_.store(true);
-    post_utf_change_state(cb_return_code);
+  if (in_non_error_transition_state()) {
+    received_user_cb_resp(cb_return_code);
+  } else if (in_error_transition_state()) {
+    received_on_error_resp(cb_return_code);
   } else {
     RCUTILS_LOG_ERROR(
-      "continue_change_state failed: called too many times");
+      "send_callback_resp failed: not in a transition state");
     rcl_ret_error();
   }
 }
@@ -95,7 +80,6 @@ ChangeStateHandlerImpl::change_state(
   uint8_t transition_id,
   const std::shared_ptr<rmw_request_id_t> header)
 {
-  assert(change_state_srv_hdl_ != nullptr);
   if (is_transitioning()) {
     RCUTILS_LOG_ERROR(
       "Currently in transition, failing requested transition id %d.", transition_id);
@@ -108,7 +92,6 @@ ChangeStateHandlerImpl::change_state(
   }
 
   is_transitioning_.store(true);
-  utf_has_been_called_.store(false);
   header_ = header;
   transition_id_ = transition_id;
 
@@ -149,12 +132,12 @@ ChangeStateHandlerImpl::change_state(
     cb_return_code_ = execute_callback(
       current_state_id,
       pre_transition_primary_state_);
-    continue_change_state(cb_return_code_);
+    send_callback_resp(cb_return_code_);
   }
 }
 
 void
-ChangeStateHandlerImpl::post_utf_change_state(
+ChangeStateHandlerImpl::received_user_cb_resp(
   node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code)
 {
   constexpr bool publish_update = true;
@@ -193,7 +176,7 @@ ChangeStateHandlerImpl::post_utf_change_state(
       auto error_cb_code = execute_callback(
         current_state_id,
         pre_transition_primary_state_);
-      continue_change_state(error_cb_code);
+      send_callback_resp(error_cb_code);
     }
   } else {
     finalize_change_state(
@@ -202,7 +185,7 @@ ChangeStateHandlerImpl::post_utf_change_state(
 }
 
 void
-ChangeStateHandlerImpl::post_on_error_change_state(
+ChangeStateHandlerImpl::received_on_error_resp(
   node_interfaces::LifecycleNodeInterface::CallbackReturn error_cb_code)
 {
   constexpr bool publish_update = true;
@@ -290,7 +273,7 @@ ChangeStateHandlerImpl::execute_async_callback(
     } catch (const std::exception & e) {
       RCUTILS_LOG_ERROR("Caught exception in callback for transition %d", it->first);
       RCUTILS_LOG_ERROR("Original error: %s", e.what());
-      continue_change_state(
+      send_callback_resp(
         node_interfaces::LifecycleNodeInterface::CallbackReturn::ERROR);
     }
   } else {
@@ -298,7 +281,7 @@ ChangeStateHandlerImpl::execute_async_callback(
     // therefor this should never run
     // However, to be consistent with execute_callback:
     // in case no callback was attached, we forward directly
-    continue_change_state(
+    send_callback_resp(
       node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS);
   }
 }
@@ -320,6 +303,26 @@ void
 ChangeStateHandlerImpl::rcl_ret_error()
 {
   finalize_change_state(false);
+}
+
+bool
+ChangeStateHandlerImpl::in_non_error_transition_state() const
+{
+  std::lock_guard<std::recursive_mutex> lock(state_machine_mutex_);
+  unsigned int current_state_id = state_machine_.current_state->id;
+  return current_state_id == lifecycle_msgs::msg::State::TRANSITION_STATE_CONFIGURING ||
+         current_state_id == lifecycle_msgs::msg::State::TRANSITION_STATE_CLEANINGUP ||
+         current_state_id == lifecycle_msgs::msg::State::TRANSITION_STATE_SHUTTINGDOWN ||
+         current_state_id == lifecycle_msgs::msg::State::TRANSITION_STATE_ACTIVATING ||
+         current_state_id == lifecycle_msgs::msg::State::TRANSITION_STATE_DEACTIVATING;
+}
+
+bool
+ChangeStateHandlerImpl::in_error_transition_state() const
+{
+  std::lock_guard<std::recursive_mutex> lock(state_machine_mutex_);
+  unsigned int current_state_id = state_machine_.current_state->id;
+  return current_state_id == lifecycle_msgs::msg::State::TRANSITION_STATE_ERRORPROCESSING;
 }
 
 ChangeStateHandlerImpl::~ChangeStateHandlerImpl()

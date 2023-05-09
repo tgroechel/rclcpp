@@ -28,7 +28,7 @@ public:
    *  Also used within the lifecycle_node_interface_impl to continue the change state process
    * \param[in] cb_return_code result of user defined transition callback
    */
-  virtual void continue_change_state(
+  virtual void send_callback_resp(
     node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code) = 0;
 
   virtual ~ChangeStateHandler() {}

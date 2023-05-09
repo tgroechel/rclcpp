@@ -104,11 +104,6 @@ LifecycleNode::LifecycleNodeInterfaceImpl::init(bool enable_communication_interf
             std::string("Couldn't initialize state machine for node ") +
             node_base_interface_->get_name());
   }
-  change_state_hdl = std::make_shared<ChangeStateHandlerImpl>(
-    std::ref(state_machine_mutex_),
-    std::ref(state_machine_),
-    std::ref(current_state_),
-    node_base_interface_);
 
   current_state_ = State(state_machine_.current_state);
 
@@ -127,7 +122,6 @@ LifecycleNode::LifecycleNodeInterfaceImpl::init(bool enable_communication_interf
       node_services_interface_->add_service(
         std::dynamic_pointer_cast<rclcpp::ServiceBase>(srv_change_state_),
         nullptr);
-      change_state_hdl->set_change_state_srv_hdl(srv_change_state_);
     }
 
     { // get_state
@@ -196,6 +190,13 @@ LifecycleNode::LifecycleNodeInterfaceImpl::init(bool enable_communication_interf
         nullptr);
     }
   }
+
+  change_state_hdl = std::make_shared<ChangeStateHandlerImpl>(
+    srv_change_state_,
+    std::ref(state_machine_mutex_),
+    std::ref(state_machine_),
+    std::ref(current_state_),
+    node_base_interface_);
 }
 
 bool

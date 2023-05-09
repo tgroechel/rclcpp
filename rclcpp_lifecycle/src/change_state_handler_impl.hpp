@@ -39,13 +39,11 @@ public:
   rcl_ret_t rcl_ret_;
 
   ChangeStateHandlerImpl(
+    const std::shared_ptr<rclcpp::Service<ChangeStateSrv>> change_state_srv_hdl,
     std::recursive_mutex & state_machine_mutex,
     rcl_lifecycle_state_machine_t & state_machine,
     State & current_state,
     const std::shared_ptr<rclcpp::node_interfaces::NodeBaseInterface> node_base_interface);
-
-  void set_change_state_srv_hdl(
-    const std::shared_ptr<rclcpp::Service<ChangeStateSrv>> change_state_srv_hdl);
 
   bool
   register_callback(
@@ -57,7 +55,7 @@ public:
     std::uint8_t lifecycle_transition,
     std::function<void(const State &, std::shared_ptr<ChangeStateHandler>)> & cb);
 
-  void continue_change_state(
+  void send_callback_resp(
     node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code) override;
 
   void change_state(
@@ -70,7 +68,6 @@ public:
 
 private:
   std::atomic<bool> is_transitioning_{false};
-  std::atomic<bool> utf_has_been_called_{false};
   std::shared_ptr<rclcpp::Service<ChangeStateSrv>> change_state_srv_hdl_;
   std::shared_ptr<rmw_request_id_t> header_;
 
@@ -90,9 +87,9 @@ private:
   State pre_transition_primary_state_;
   uint8_t transition_id_;
 
-  void post_utf_change_state(
+  void received_user_cb_resp(
     node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code);
-  void post_on_error_change_state(
+  void received_on_error_resp(
     node_interfaces::LifecycleNodeInterface::CallbackReturn error_cb_code);
   void finalize_change_state(bool success);
 
@@ -109,6 +106,9 @@ private:
   get_label_for_return_code(node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code);
 
   void rcl_ret_error();
+
+  bool in_non_error_transition_state() const;
+  bool in_error_transition_state() const;
 };
 }  // namespace rclcpp_lifecycle
 
