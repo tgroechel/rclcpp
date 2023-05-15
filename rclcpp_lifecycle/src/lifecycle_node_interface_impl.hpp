@@ -116,7 +116,7 @@ private:
 
   NodeBasePtr node_base_interface_;
   NodeServicesPtr node_services_interface_;
-  std::unique_ptr<LifecycleNodeStateManager> state_manager_hdl_;
+  std::shared_ptr<LifecycleNodeStateManager> state_manager_hdl_;
   std::unique_ptr<ManagedEntitiesManager> managed_entities_manager_hdl_;
 };
 

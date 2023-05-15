@@ -63,7 +63,8 @@ LifecycleNode::LifecycleNodeInterfaceImpl::~LifecycleNodeInterfaceImpl()
 void
 LifecycleNode::LifecycleNodeInterfaceImpl::init(bool enable_communication_interface)
 {
-  state_manager_hdl_ = std::make_unique<LifecycleNodeStateManager>(
+  state_manager_hdl_ = std::make_shared<LifecycleNodeStateManager>();
+  state_manager_hdl_->init(
     node_base_interface_,
     node_services_interface_,
     enable_communication_interface

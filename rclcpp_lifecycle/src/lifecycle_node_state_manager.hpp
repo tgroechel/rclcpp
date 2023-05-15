@@ -49,7 +49,7 @@ class LifecycleNodeStateManager :
 public:
   using ChangeStateSrv = lifecycle_msgs::srv::ChangeState;
 
-  LifecycleNodeStateManager(
+  void init(
     const std::shared_ptr<rclcpp::node_interfaces::NodeBaseInterface> node_base_interface,
     const std::shared_ptr<rclcpp::node_interfaces::NodeServicesInterface> node_services_interface,
     bool enable_communication_interface);

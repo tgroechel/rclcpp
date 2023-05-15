@@ -19,16 +19,18 @@
 
 namespace rclcpp_lifecycle
 {
-LifecycleNodeStateManager::LifecycleNodeStateManager(
+void 
+LifecycleNodeStateManager::init(
   const std::shared_ptr<rclcpp::node_interfaces::NodeBaseInterface> node_base_interface,
   const std::shared_ptr<rclcpp::node_interfaces::NodeServicesInterface> node_services_interface,
   bool enable_communication_interface)
-: node_base_interface_(node_base_interface)
 {
   using ChangeStateSrv = lifecycle_msgs::srv::ChangeState;
   using GetStateSrv = lifecycle_msgs::srv::GetState;
   using GetAvailableStatesSrv = lifecycle_msgs::srv::GetAvailableStates;
   using GetAvailableTransitionsSrv = lifecycle_msgs::srv::GetAvailableTransitions;
+
+  node_base_interface_ = node_base_interface;
 
   rcl_node_t * node_handle = node_base_interface_->get_rcl_node_handle();
   const rcl_node_options_t * node_options =
@@ -66,7 +68,7 @@ LifecycleNodeStateManager::LifecycleNodeStateManager(
       node_base_interface_,
       node_services_interface,
       state_machine_,
-      weak_from_this()
+      weak_from_this() // cannot be in constructor
     );
   }
 
