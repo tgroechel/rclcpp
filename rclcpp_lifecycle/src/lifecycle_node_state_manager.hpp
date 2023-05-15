@@ -38,7 +38,7 @@
 
 #include "rmw/types.h"
 
-#include "lifecycle_state_services_manager.hpp"
+#include "lifecycle_node_state_services_manager.hpp"
 
 
 namespace rclcpp_lifecycle
@@ -94,7 +94,7 @@ public:
 
 private:
   std::shared_ptr<rclcpp::node_interfaces::NodeBaseInterface> node_base_interface_;
-  std::unique_ptr<LifecycleStateServicesManager> state_services_manager_hdl_;
+  std::unique_ptr<LifecycleNodeStateServicesManager> state_services_manager_hdl_;
 
   mutable std::recursive_mutex state_machine_mutex_;
   rcl_lifecycle_state_machine_t state_machine_;

@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef LIFECYCLE_STATE_SERVICES_MANAGER_HPP_
-#define LIFECYCLE_STATE_SERVICES_MANAGER_HPP_
+#ifndef LIFECYCLE_NODE_STATE_SERVICES_MANAGER_HPP_
+#define LIFECYCLE_NODE_STATE_SERVICES_MANAGER_HPP_
 
 #include <vector>
 
@@ -35,7 +35,7 @@ namespace rclcpp_lifecycle
 {
 class LifecycleNodeStateManager; // forward declaration
 
-class LifecycleStateServicesManager
+class LifecycleNodeStateServicesManager
 {
   using ChangeStateSrv = lifecycle_msgs::srv::ChangeState;
   using GetStateSrv = lifecycle_msgs::srv::GetState;
@@ -44,7 +44,7 @@ class LifecycleStateServicesManager
   using TransitionEventMsg = lifecycle_msgs::msg::TransitionEvent;
 
 public:
-  LifecycleStateServicesManager(
+  LifecycleNodeStateServicesManager(
     std::shared_ptr<rclcpp::node_interfaces::NodeBaseInterface> node_base_interface,
     std::shared_ptr<rclcpp::node_interfaces::NodeServicesInterface> node_services_interface,
     rcl_lifecycle_state_machine_t & state_machine,
@@ -112,4 +112,4 @@ private:
 };
 
 }  // namespace rclcpp_lifecycle
-#endif  // LIFECYCLE_STATE_SERVICES_MANAGER_HPP_
+#endif  // LIFECYCLE_NODE_STATE_SERVICES_MANAGER_HPP_

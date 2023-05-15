@@ -13,24 +13,17 @@
 // limitations under the License.
 
 #include <vector>
-#include "lifecycle_state_services_manager.hpp"
-#include "lifecycle_node_state_manager.hpp" // TODO @tgroechel: circular, need to do it later
-
-// #include "rcl_lifecycle/rcl_lifecycle.h"
+#include "lifecycle_node_state_services_manager.hpp"
+#include "lifecycle_node_state_manager.hpp"
 
 #include "rclcpp/node_interfaces/node_base_interface.hpp"
 #include "rclcpp/node_interfaces/node_services_interface.hpp"
 #include "rclcpp_lifecycle/node_interfaces/lifecycle_node_interface.hpp"
 
-
-// #include "rclcpp_lifecycle/node_interfaces/lifecycle_node_interface.hpp"
-
-// #include "rmw/types.h"
-
 namespace rclcpp_lifecycle
 {
 
-LifecycleStateServicesManager::LifecycleStateServicesManager(
+LifecycleNodeStateServicesManager::LifecycleNodeStateServicesManager(
   std::shared_ptr<rclcpp::node_interfaces::NodeBaseInterface> node_base_interface,
   std::shared_ptr<rclcpp::node_interfaces::NodeServicesInterface> node_services_interface,
   rcl_lifecycle_state_machine_t & state_machine,
@@ -40,7 +33,7 @@ LifecycleStateServicesManager::LifecycleStateServicesManager(
 {
   { // change_state
     auto cb = std::bind(
-      &LifecycleStateServicesManager::on_change_state, this,
+      &LifecycleNodeStateServicesManager::on_change_state, this,
       std::placeholders::_1, std::placeholders::_2);
     rclcpp::AnyServiceCallback<ChangeStateSrv> any_cb;
     any_cb.set(std::move(cb));
@@ -56,7 +49,7 @@ LifecycleStateServicesManager::LifecycleStateServicesManager(
 
   { // get_state
     auto cb = std::bind(
-      &LifecycleStateServicesManager::on_get_state, this,
+      &LifecycleNodeStateServicesManager::on_get_state, this,
       std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
     rclcpp::AnyServiceCallback<GetStateSrv> any_cb;
     any_cb.set(std::move(cb));
@@ -72,7 +65,7 @@ LifecycleStateServicesManager::LifecycleStateServicesManager(
 
   { // get_available_states
     auto cb = std::bind(
-      &LifecycleStateServicesManager::on_get_available_states, this,
+      &LifecycleNodeStateServicesManager::on_get_available_states, this,
       std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
     rclcpp::AnyServiceCallback<GetAvailableStatesSrv> any_cb;
     any_cb.set(std::move(cb));
@@ -88,7 +81,7 @@ LifecycleStateServicesManager::LifecycleStateServicesManager(
 
   { // get_available_transitions
     auto cb = std::bind(
-      &LifecycleStateServicesManager::on_get_available_transitions, this,
+      &LifecycleNodeStateServicesManager::on_get_available_transitions, this,
       std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
     rclcpp::AnyServiceCallback<GetAvailableTransitionsSrv> any_cb;
     any_cb.set(std::move(cb));
@@ -105,7 +98,7 @@ LifecycleStateServicesManager::LifecycleStateServicesManager(
 
   { // get_transition_graph
     auto cb = std::bind(
-      &LifecycleStateServicesManager::on_get_transition_graph, this,
+      &LifecycleNodeStateServicesManager::on_get_transition_graph, this,
       std::placeholders::_1, std::placeholders::_2, std::placeholders::_3);
     rclcpp::AnyServiceCallback<GetAvailableTransitionsSrv> any_cb;
     any_cb.set(std::move(cb));
@@ -122,7 +115,7 @@ LifecycleStateServicesManager::LifecycleStateServicesManager(
 }
 
 void
-LifecycleStateServicesManager::send_change_state_resp(
+LifecycleNodeStateServicesManager::send_change_state_resp(
   const std::shared_ptr<rmw_request_id_t> header,
   bool success) const
 {
@@ -132,7 +125,7 @@ LifecycleStateServicesManager::send_change_state_resp(
 }
 
 void
-LifecycleStateServicesManager::send_change_state_resp(
+LifecycleNodeStateServicesManager::send_change_state_resp(
   const std::shared_ptr<rmw_request_id_t> header,
   const std::unique_ptr<ChangeStateSrv::Response> resp) const
 {
@@ -140,7 +133,7 @@ LifecycleStateServicesManager::send_change_state_resp(
 }
 
 void
-LifecycleStateServicesManager::on_change_state(
+LifecycleNodeStateServicesManager::on_change_state(
   const std::shared_ptr<rmw_request_id_t> header,
   const std::shared_ptr<ChangeStateSrv::Request> req)
 {
@@ -155,7 +148,7 @@ LifecycleStateServicesManager::on_change_state(
 }
 
 void
-LifecycleStateServicesManager::on_get_state(
+LifecycleNodeStateServicesManager::on_get_state(
   const std::shared_ptr<rmw_request_id_t> header,
   const std::shared_ptr<GetStateSrv::Request> req,
   std::shared_ptr<GetStateSrv::Response> resp) const
@@ -170,7 +163,7 @@ LifecycleStateServicesManager::on_get_state(
 }
 
 void
-LifecycleStateServicesManager::on_get_available_states(
+LifecycleNodeStateServicesManager::on_get_available_states(
   const std::shared_ptr<rmw_request_id_t> header,
   const std::shared_ptr<GetAvailableStatesSrv::Request> req,
   std::shared_ptr<GetAvailableStatesSrv::Response> resp) const
@@ -188,7 +181,7 @@ LifecycleStateServicesManager::on_get_available_states(
 }
 
 void
-LifecycleStateServicesManager::on_get_available_transitions(
+LifecycleNodeStateServicesManager::on_get_available_transitions(
   const std::shared_ptr<rmw_request_id_t> header,
   const std::shared_ptr<GetAvailableTransitionsSrv::Request> req,
   std::shared_ptr<GetAvailableTransitionsSrv::Response> resp) const
@@ -202,7 +195,7 @@ LifecycleStateServicesManager::on_get_available_transitions(
 }
 
 void
-LifecycleStateServicesManager::on_get_transition_graph(
+LifecycleNodeStateServicesManager::on_get_transition_graph(
   const std::shared_ptr<rmw_request_id_t> header,
   const std::shared_ptr<GetAvailableTransitionsSrv::Request> req,
   std::shared_ptr<GetAvailableTransitionsSrv::Response> resp) const
@@ -217,7 +210,7 @@ LifecycleStateServicesManager::on_get_transition_graph(
 }
 
 void
-LifecycleStateServicesManager::copy_transitions_vector_to_resp(
+LifecycleNodeStateServicesManager::copy_transitions_vector_to_resp(
   const std::vector<Transition> transition_vec,
   std::shared_ptr<GetAvailableTransitionsSrv::Response> resp) const
 {

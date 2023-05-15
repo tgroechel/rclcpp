@@ -11,13 +11,13 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#include "managed_entities_manager.hpp"
+#include "lifecycle_node_entities_manager.hpp"
 
 namespace rclcpp_lifecycle
 {
 
 void
-ManagedEntitiesManager::on_activate() const
+LifecycleNodeEntitiesManager::on_activate() const
 {
   for (const auto & weak_entity : weak_managed_entities_) {
     auto entity = weak_entity.lock();
@@ -28,7 +28,7 @@ ManagedEntitiesManager::on_activate() const
 }
 
 void
-ManagedEntitiesManager::on_deactivate() const
+LifecycleNodeEntitiesManager::on_deactivate() const
 {
   for (const auto & weak_entity : weak_managed_entities_) {
     auto entity = weak_entity.lock();
@@ -39,14 +39,14 @@ ManagedEntitiesManager::on_deactivate() const
 }
 
 void
-ManagedEntitiesManager::add_managed_entity(
+LifecycleNodeEntitiesManager::add_managed_entity(
 std::weak_ptr<rclcpp_lifecycle::ManagedEntityInterface> managed_entity)
 {
     weak_managed_entities_.push_back(managed_entity);
 }
 
 void
-ManagedEntitiesManager::add_timer_handle(
+LifecycleNodeEntitiesManager::add_timer_handle(
 std::shared_ptr<rclcpp::TimerBase> timer)
 {
     weak_timers_.push_back(timer);

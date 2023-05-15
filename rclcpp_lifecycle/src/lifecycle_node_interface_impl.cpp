@@ -69,7 +69,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::init(bool enable_communication_interf
     node_services_interface_,
     enable_communication_interface
   );
-  managed_entities_manager_hdl_ = std::make_unique<ManagedEntitiesManager>();
+  managed_entities_manager_hdl_ = std::make_unique<LifecycleNodeEntitiesManager>();
 }
 
 bool

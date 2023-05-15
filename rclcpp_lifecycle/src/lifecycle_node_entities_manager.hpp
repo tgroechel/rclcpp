@@ -23,7 +23,7 @@
 namespace rclcpp_lifecycle
 {
   
-class ManagedEntitiesManager
+class LifecycleNodeEntitiesManager
 {
 public:
 

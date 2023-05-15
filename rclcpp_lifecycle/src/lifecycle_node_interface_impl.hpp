@@ -39,7 +39,7 @@
 #include "rmw/types.h"
 
 #include "lifecycle_node_state_manager.hpp"
-#include "managed_entities_manager.hpp"
+#include "lifecycle_node_entities_manager.hpp"
 
 namespace rclcpp_lifecycle
 {
@@ -117,7 +117,7 @@ private:
   NodeBasePtr node_base_interface_;
   NodeServicesPtr node_services_interface_;
   std::shared_ptr<LifecycleNodeStateManager> state_manager_hdl_;
-  std::unique_ptr<ManagedEntitiesManager> managed_entities_manager_hdl_;
+  std::unique_ptr<LifecycleNodeEntitiesManager> managed_entities_manager_hdl_;
 };
 
 }  // namespace rclcpp_lifecycle

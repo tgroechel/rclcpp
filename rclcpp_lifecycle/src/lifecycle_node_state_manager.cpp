@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "lifecycle_state_services_manager.hpp"
+#include "lifecycle_node_state_services_manager.hpp"
 #include "lifecycle_node_state_manager.hpp"
 #include <cassert>
 #include <memory>
@@ -64,7 +64,7 @@ LifecycleNodeStateManager::init(
   }
 
   if (enable_communication_interface) {
-    state_services_manager_hdl_ = std::make_unique<LifecycleStateServicesManager>(
+    state_services_manager_hdl_ = std::make_unique<LifecycleNodeStateServicesManager>(
       node_base_interface_,
       node_services_interface,
       state_machine_,
