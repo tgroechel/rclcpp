@@ -42,13 +42,14 @@ class LifecycleStateServicesManager
   using GetAvailableStatesSrv = lifecycle_msgs::srv::GetAvailableStates;
   using GetAvailableTransitionsSrv = lifecycle_msgs::srv::GetAvailableTransitions;
   using TransitionEventMsg = lifecycle_msgs::msg::TransitionEvent;
+
 public:
   LifecycleStateServicesManager(
     std::shared_ptr<rclcpp::node_interfaces::NodeBaseInterface> node_base_interface,
     std::shared_ptr<rclcpp::node_interfaces::NodeServicesInterface> node_services_interface,
-    rcl_lifecycle_state_machine_t& state_machine,
+    rcl_lifecycle_state_machine_t & state_machine,
     const std::weak_ptr<LifecycleNodeStateManager> state_manager_hdl);
-  
+
   void send_change_state_resp(
     const std::shared_ptr<rmw_request_id_t> header,
     bool success) const;

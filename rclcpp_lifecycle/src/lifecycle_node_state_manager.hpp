@@ -43,8 +43,8 @@
 
 namespace rclcpp_lifecycle
 {
-class LifecycleNodeStateManager : 
-  public std::enable_shared_from_this<LifecycleNodeStateManager>
+class LifecycleNodeStateManager
+  : public std::enable_shared_from_this<LifecycleNodeStateManager>
 {
 public:
   using ChangeStateSrv = lifecycle_msgs::srv::ChangeState;
@@ -81,28 +81,28 @@ public:
   bool is_transitioning() const;
 
   /**
-   * @brief Gets the transition id prioritizing request->transition.label over 
+   * @brief Gets the transition id prioritizing request->transition.label over
    *        request->transition.id if the label is set
    *        Throws exception if state_machine_ is not initialized
    * @return the transition id, returns -1 if the transition does not exist
   */
   int get_transition_id_from_request(const ChangeStateSrv::Request::SharedPtr req);
 
-  const rcl_lifecycle_transition_t * get_transition_by_label(const char * label) const; 
+  const rcl_lifecycle_transition_t * get_transition_by_label(const char * label) const;
 
   virtual ~LifecycleNodeStateManager();
 
 private:
   std::shared_ptr<rclcpp::node_interfaces::NodeBaseInterface> node_base_interface_;
   std::unique_ptr<LifecycleStateServicesManager> state_services_manager_hdl_;
-  
+
   mutable std::recursive_mutex state_machine_mutex_;
   rcl_lifecycle_state_machine_t state_machine_;
   State current_state_;
-    std::map<
+  std::map<
     std::uint8_t,
     std::function<node_interfaces::LifecycleNodeInterface::CallbackReturn(const State &)>> cb_map_;
-  
+
   std::atomic<bool> is_transitioning_{false};
   std::shared_ptr<rmw_request_id_t> header_;
   State pre_transition_primary_state_;
@@ -122,7 +122,7 @@ private:
 
   const char *
   get_label_for_return_code(node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code);
-   
+
   void rcl_ret_error();
 
   void update_current_state_();

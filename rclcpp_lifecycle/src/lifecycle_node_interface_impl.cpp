@@ -123,7 +123,7 @@ const State & LifecycleNode::LifecycleNodeInterfaceImpl::trigger_transition(
   const char * transition_label,
   node_interfaces::LifecycleNodeInterface::CallbackReturn & cb_return_code)
 {
-  const rcl_lifecycle_transition_t * transition = 
+  const rcl_lifecycle_transition_t * transition =
     state_manager_hdl_->get_transition_by_label(transition_label);
 
   if (transition) {

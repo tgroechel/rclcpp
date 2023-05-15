@@ -19,7 +19,7 @@
 
 namespace rclcpp_lifecycle
 {
-void 
+void
 LifecycleNodeStateManager::init(
   const std::shared_ptr<rclcpp::node_interfaces::NodeBaseInterface> node_base_interface,
   const std::shared_ptr<rclcpp::node_interfaces::NodeServicesInterface> node_services_interface,
@@ -133,7 +133,7 @@ void
 LifecycleNodeStateManager::process_callback_resp(
   node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code)
 {
-  if(cb_return_code == node_interfaces::LifecycleNodeInterface::CallbackReturn::DEFER){
+  if (cb_return_code == node_interfaces::LifecycleNodeInterface::CallbackReturn::DEFER) {
     return;
   }
 
@@ -150,7 +150,7 @@ LifecycleNodeStateManager::process_callback_resp(
   }
 }
 
-rcl_ret_t 
+rcl_ret_t
 LifecycleNodeStateManager::change_state(
   uint8_t transition_id,
   node_interfaces::LifecycleNodeInterface::CallbackReturn & cb_return_code
@@ -168,7 +168,7 @@ LifecycleNodeStateManager::change_state(
 {
   if (is_transitioning()) {
     RCUTILS_LOG_ERROR(
-      "%s currently in transition, failing requested transition id %d.", 
+      "%s currently in transition, failing requested transition id %d.",
       node_base_interface_->get_name(),
       transition_id);
     if (header) {
@@ -252,10 +252,10 @@ LifecycleNodeStateManager::process_user_callback_resp(
   // TODO(karsten1987): iterate over possible ret value
   if (cb_return_code == node_interfaces::LifecycleNodeInterface::CallbackReturn::ERROR) {
     RCUTILS_LOG_WARN("Error occurred while calling transition function, calling on_error.");
-      auto error_cb_code = execute_callback(
-        current_state_id,
-        pre_transition_primary_state_);
-      process_callback_resp(error_cb_code);
+    auto error_cb_code = execute_callback(
+      current_state_id,
+      pre_transition_primary_state_);
+    process_callback_resp(error_cb_code);
   } else {
     finalize_change_state(
       cb_return_code == node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS);
@@ -343,7 +343,7 @@ LifecycleNodeStateManager::rcl_ret_error()
   finalize_change_state(false);
 }
 
-int 
+int
 LifecycleNodeStateManager::get_transition_id_from_request(
   const ChangeStateSrv::Request::SharedPtr req)
 {
@@ -379,11 +379,11 @@ LifecycleNodeStateManager::update_current_state_()
   current_state_ = State(state_machine_.current_state);
 }
 
-const rcl_lifecycle_transition_t * 
+const rcl_lifecycle_transition_t *
 LifecycleNodeStateManager::get_transition_by_label(const char * label) const
 {
   std::lock_guard<std::recursive_mutex> lock(state_machine_mutex_);
-  return 
+  return
     rcl_lifecycle_get_transition_by_label(state_machine_.current_state, label);
 }
 
@@ -413,7 +413,7 @@ LifecycleNodeStateManager::in_error_transition_state(
 }
 
 LifecycleNodeStateManager::~LifecycleNodeStateManager()
-{ 
+{
   rcl_node_t * node_handle = node_base_interface_->get_rcl_node_handle();
   rcl_ret_t ret;
   {

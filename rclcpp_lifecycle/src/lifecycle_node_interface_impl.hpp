@@ -92,7 +92,7 @@ public:
   const State & trigger_transition(
     const char * transition_label,
     node_interfaces::LifecycleNodeInterface::CallbackReturn & cb_return_code);
-  
+
   void send_callback_resp(
     node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code) const;
 

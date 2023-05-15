@@ -29,13 +29,14 @@
 
 namespace rclcpp_lifecycle
 {
-  
+
 LifecycleStateServicesManager::LifecycleStateServicesManager(
   std::shared_ptr<rclcpp::node_interfaces::NodeBaseInterface> node_base_interface,
   std::shared_ptr<rclcpp::node_interfaces::NodeServicesInterface> node_services_interface,
-  rcl_lifecycle_state_machine_t& state_machine,
+  rcl_lifecycle_state_machine_t & state_machine,
   const std::weak_ptr<LifecycleNodeStateManager> state_manager_hdl
-) : state_manager_hdl_(state_manager_hdl)
+)
+: state_manager_hdl_(state_manager_hdl)
 {
   { // change_state
     auto cb = std::bind(
@@ -143,12 +144,11 @@ LifecycleStateServicesManager::on_change_state(
   const std::shared_ptr<rmw_request_id_t> header,
   const std::shared_ptr<ChangeStateSrv::Request> req)
 {
-  if(auto state_hdl = state_manager_hdl_.lock())
-  {
+  if (auto state_hdl = state_manager_hdl_.lock()) {
     int transition_id = state_hdl->get_transition_id_from_request(req);
-    if(transition_id < 0){
+    if (transition_id < 0) {
       send_change_state_resp(header, false);
-    } else{
+    } else {
       state_hdl->change_state(transition_id, header);
     }
   }
@@ -162,9 +162,8 @@ LifecycleStateServicesManager::on_get_state(
 {
   (void)header;
   (void)req;
-  if(auto state_hdl = state_manager_hdl_.lock())
-  {
-    const State& current_state = state_hdl->get_current_state();
+  if (auto state_hdl = state_manager_hdl_.lock()) {
+    const State & current_state = state_hdl->get_current_state();
     resp->current_state.id = current_state.id();
     resp->current_state.label = current_state.label();
   }
@@ -178,8 +177,7 @@ LifecycleStateServicesManager::on_get_available_states(
 {
   (void)header;
   (void)req;
-  if(auto state_hdl = state_manager_hdl_.lock())
-  {
+  if (auto state_hdl = state_manager_hdl_.lock()) {
     std::vector<State> available_states = state_hdl->get_available_states();
     resp->available_states.resize(available_states.size());
     for (unsigned int i = 0; i < available_states.size(); ++i) {
@@ -197,8 +195,7 @@ LifecycleStateServicesManager::on_get_available_transitions(
 {
   (void)header;
   (void)req;
-  if(auto state_hdl = state_manager_hdl_.lock())
-  {
+  if (auto state_hdl = state_manager_hdl_.lock()) {
     std::vector<Transition> available_transitions = state_hdl->get_available_transitions();
     copy_transitions_vector_to_resp(available_transitions, resp);
   }
@@ -213,8 +210,7 @@ LifecycleStateServicesManager::on_get_transition_graph(
   (void)header;
   (void)req;
 
-  if(auto state_hdl = state_manager_hdl_.lock())
-  {
+  if (auto state_hdl = state_manager_hdl_.lock()) {
     std::vector<Transition> available_transitions = state_hdl->get_transition_graph();
     copy_transitions_vector_to_resp(available_transitions, resp);
   }
@@ -240,4 +236,3 @@ LifecycleStateServicesManager::copy_transitions_vector_to_resp(
 }
 
 }  // namespace rclcpp_lifecycle
-
