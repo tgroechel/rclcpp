@@ -38,16 +38,14 @@
 
 #include "rmw/types.h"
 
+#include "lifecycle_node_state_manager.hpp"
+#include "managed_entities_manager.hpp"
+
 namespace rclcpp_lifecycle
 {
 
 class LifecycleNode::LifecycleNodeInterfaceImpl final
 {
-  using ChangeStateSrv = lifecycle_msgs::srv::ChangeState;
-  using GetStateSrv = lifecycle_msgs::srv::GetState;
-  using GetAvailableStatesSrv = lifecycle_msgs::srv::GetAvailableStates;
-  using GetAvailableTransitionsSrv = lifecycle_msgs::srv::GetAvailableTransitions;
-  using TransitionEventMsg = lifecycle_msgs::msg::TransitionEvent;
 
 public:
   LifecycleNodeInterfaceImpl(
@@ -76,6 +74,11 @@ public:
   std::vector<Transition>
   get_transition_graph() const;
 
+  rcl_ret_t
+  change_state(
+    std::uint8_t transition_id,
+    node_interfaces::LifecycleNodeInterface::CallbackReturn & cb_return_code);
+
   const State &
   trigger_transition(uint8_t transition_id);
 
@@ -89,6 +92,9 @@ public:
   const State & trigger_transition(
     const char * transition_label,
     node_interfaces::LifecycleNodeInterface::CallbackReturn & cb_return_code);
+  
+  void send_callback_resp(
+    node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code) const;
 
   void
   on_activate() const;
@@ -105,73 +111,13 @@ public:
 private:
   RCLCPP_DISABLE_COPY(LifecycleNodeInterfaceImpl)
 
-  void
-  on_change_state(
-    const std::shared_ptr<rmw_request_id_t> header,
-    const std::shared_ptr<ChangeStateSrv::Request> req,
-    std::shared_ptr<ChangeStateSrv::Response> resp);
-
-  void
-  on_get_state(
-    const std::shared_ptr<rmw_request_id_t> header,
-    const std::shared_ptr<GetStateSrv::Request> req,
-    std::shared_ptr<GetStateSrv::Response> resp) const;
-
-  void
-  on_get_available_states(
-    const std::shared_ptr<rmw_request_id_t> header,
-    const std::shared_ptr<GetAvailableStatesSrv::Request> req,
-    std::shared_ptr<GetAvailableStatesSrv::Response> resp) const;
-
-  void
-  on_get_available_transitions(
-    const std::shared_ptr<rmw_request_id_t> header,
-    const std::shared_ptr<GetAvailableTransitionsSrv::Request> req,
-    std::shared_ptr<GetAvailableTransitionsSrv::Response> resp) const;
-
-  void
-  on_get_transition_graph(
-    const std::shared_ptr<rmw_request_id_t> header,
-    const std::shared_ptr<GetAvailableTransitionsSrv::Request> req,
-    std::shared_ptr<GetAvailableTransitionsSrv::Response> resp) const;
-
-  rcl_ret_t
-  change_state(
-    std::uint8_t transition_id,
-    node_interfaces::LifecycleNodeInterface::CallbackReturn & cb_return_code);
-
-  node_interfaces::LifecycleNodeInterface::CallbackReturn
-  execute_callback(unsigned int cb_id, const State & previous_state) const;
-
-  mutable std::recursive_mutex state_machine_mutex_;
-  rcl_lifecycle_state_machine_t state_machine_;
-  State current_state_;
-  std::map<
-    std::uint8_t,
-    std::function<node_interfaces::LifecycleNodeInterface::CallbackReturn(const State &)>> cb_map_;
-
   using NodeBasePtr = std::shared_ptr<rclcpp::node_interfaces::NodeBaseInterface>;
   using NodeServicesPtr = std::shared_ptr<rclcpp::node_interfaces::NodeServicesInterface>;
-  using ChangeStateSrvPtr = std::shared_ptr<rclcpp::Service<ChangeStateSrv>>;
-  using GetStateSrvPtr = std::shared_ptr<rclcpp::Service<GetStateSrv>>;
-  using GetAvailableStatesSrvPtr =
-    std::shared_ptr<rclcpp::Service<GetAvailableStatesSrv>>;
-  using GetAvailableTransitionsSrvPtr =
-    std::shared_ptr<rclcpp::Service<GetAvailableTransitionsSrv>>;
-  using GetTransitionGraphSrvPtr =
-    std::shared_ptr<rclcpp::Service<GetAvailableTransitionsSrv>>;
 
   NodeBasePtr node_base_interface_;
   NodeServicesPtr node_services_interface_;
-  ChangeStateSrvPtr srv_change_state_;
-  GetStateSrvPtr srv_get_state_;
-  GetAvailableStatesSrvPtr srv_get_available_states_;
-  GetAvailableTransitionsSrvPtr srv_get_available_transitions_;
-  GetTransitionGraphSrvPtr srv_get_transition_graph_;
-
-  // to controllable things
-  std::vector<std::weak_ptr<rclcpp_lifecycle::ManagedEntityInterface>> weak_managed_entities_;
-  std::vector<std::weak_ptr<rclcpp::TimerBase>> weak_timers_;
+  std::unique_ptr<LifecycleNodeStateManager> state_manager_hdl_;
+  std::unique_ptr<ManagedEntitiesManager> managed_entities_manager_hdl_;
 };
 
 }  // namespace rclcpp_lifecycle

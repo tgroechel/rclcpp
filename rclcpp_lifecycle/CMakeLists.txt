@@ -24,6 +24,9 @@ find_package(rosidl_typesupport_cpp REQUIRED)
 add_library(rclcpp_lifecycle
   src/lifecycle_node.cpp
   src/lifecycle_node_interface_impl.cpp
+  src/lifecycle_node_state_manager.cpp
+  src/lifecycle_state_services_manager.cpp
+  src/managed_entities_manager.cpp
   src/managed_entity.cpp
   src/node_interfaces/lifecycle_node_interface.cpp
   src/state.cpp

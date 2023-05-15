@@ -541,6 +541,13 @@ LifecycleNode::register_on_error(
     lifecycle_msgs::msg::State::TRANSITION_STATE_ERRORPROCESSING, fcn);
 }
 
+void
+LifecycleNode::send_callback_resp(
+  node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code) const
+{
+  impl_->send_callback_resp(cb_return_code);
+}
+
 const State &
 LifecycleNode::get_current_state() const
 {

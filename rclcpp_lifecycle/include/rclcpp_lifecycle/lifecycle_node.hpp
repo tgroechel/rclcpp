@@ -1057,6 +1057,11 @@ public:
   register_on_error(std::function<LifecycleNodeInterface::CallbackReturn(const State &)> fcn);
 
   RCLCPP_LIFECYCLE_PUBLIC
+  void
+  send_callback_resp(
+    node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code) const;
+
+  RCLCPP_LIFECYCLE_PUBLIC
   CallbackReturn
   on_activate(const State & previous_state) override;
 
