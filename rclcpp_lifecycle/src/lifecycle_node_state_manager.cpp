@@ -72,6 +72,8 @@ LifecycleNodeStateManager::init(
     );
   }
 
+  change_state_hdl_ = std::make_shared<ChangeStateHandlerImpl>(weak_from_this());
+  
   update_current_state_();
 }
 
@@ -81,6 +83,23 @@ LifecycleNodeStateManager::register_callback(
   std::function<node_interfaces::LifecycleNodeInterface::CallbackReturn(const State &)> & cb)
 {
   cb_map_[lifecycle_transition] = cb;
+  auto it = async_cb_map_.find(lifecycle_transition);
+  if (it != async_cb_map_.end()) {
+    async_cb_map_.erase(it);
+  }
+  return true;
+}
+
+bool
+LifecycleNodeStateManager::register_async_callback(
+  std::uint8_t lifecycle_transition,
+  std::function<void(const State &, std::shared_ptr<ChangeStateHandler>)> & cb)
+{
+  async_cb_map_[lifecycle_transition] = cb;
+  auto it = cb_map_.find(lifecycle_transition);
+  if (it != cb_map_.end()) {
+    cb_map_.erase(it);
+  }
   return true;
 }
 
@@ -212,10 +231,15 @@ LifecycleNodeStateManager::change_state(
     update_current_state_();
   }
 
-  cb_return_code_ = execute_callback(
+  if (is_async_callback(current_state_id)) {
+    execute_async_callback(current_state_id, pre_transition_primary_state_);
+  } else{
+    cb_return_code_ = execute_callback(
     current_state_id,
     pre_transition_primary_state_);
-  process_callback_resp(cb_return_code_);
+    process_callback_resp(cb_return_code_);
+  }
+  
   return rcl_ret_;
 }
 
@@ -252,10 +276,14 @@ LifecycleNodeStateManager::process_user_callback_resp(
   // TODO(karsten1987): iterate over possible ret value
   if (cb_return_code == node_interfaces::LifecycleNodeInterface::CallbackReturn::ERROR) {
     RCUTILS_LOG_WARN("Error occurred while calling transition function, calling on_error.");
-    auto error_cb_code = execute_callback(
-      current_state_id,
-      pre_transition_primary_state_);
-    process_callback_resp(error_cb_code);
+    if (is_async_callback(current_state_id)) {
+      execute_async_callback(current_state_id, pre_transition_primary_state_);
+    } else {
+      auto error_cb_code = execute_callback(
+        current_state_id,
+        pre_transition_primary_state_);
+      process_callback_resp(error_cb_code);
+    }
   } else {
     finalize_change_state(
       cb_return_code == node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS);
@@ -303,6 +331,13 @@ bool LifecycleNodeStateManager::is_transitioning() const
   return is_transitioning_.load();
 }
 
+bool
+LifecycleNodeStateManager::is_async_callback(
+  unsigned int cb_id) const
+{
+  return async_cb_map_.find(static_cast<uint8_t>(cb_id)) != async_cb_map_.end();
+}
+
 node_interfaces::LifecycleNodeInterface::CallbackReturn
 LifecycleNodeStateManager::execute_callback(
   unsigned int cb_id, const State & previous_state) const
@@ -324,6 +359,28 @@ LifecycleNodeStateManager::execute_callback(
   return cb_success;
 }
 
+void
+LifecycleNodeStateManager::execute_async_callback(
+  unsigned int cb_id,
+  const State & previous_state)
+{
+  auto it = async_cb_map_.find(static_cast<uint8_t>(cb_id));
+  if (it != async_cb_map_.end()) {
+    auto callback = it->second;
+    try {
+      callback(State(previous_state), change_state_hdl_);
+    } catch (const std::exception & e) {
+      RCUTILS_LOG_ERROR("Caught exception in callback for transition %d", it->first);
+      RCUTILS_LOG_ERROR("Original error: %s", e.what());
+      process_callback_resp(
+        node_interfaces::LifecycleNodeInterface::CallbackReturn::ERROR);
+    }
+  } else {
+    // in case no callback was attached, we forward directly
+    process_callback_resp(
+      node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS);
+  }
+}
 const char *
 LifecycleNodeStateManager::get_label_for_return_code(
   node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code)

@@ -39,10 +39,13 @@
 #include "rmw/types.h"
 
 #include "lifecycle_node_state_services_manager.hpp"
+#include "change_state_handler_impl.hpp"
 
 
 namespace rclcpp_lifecycle
 {
+class ChangeStateHandlerImpl; // forward declaration
+
 class LifecycleNodeStateManager
   : public std::enable_shared_from_this<LifecycleNodeStateManager>
 {
@@ -58,6 +61,11 @@ public:
   register_callback(
     std::uint8_t lifecycle_transition,
     std::function<node_interfaces::LifecycleNodeInterface::CallbackReturn(const State &)> & cb);
+
+  bool
+  register_async_callback(
+    std::uint8_t lifecycle_transition,
+    std::function<void(const State &, std::shared_ptr<ChangeStateHandler>)> & cb);
 
   void process_callback_resp(
     node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code);
@@ -95,6 +103,7 @@ public:
 private:
   std::shared_ptr<rclcpp::node_interfaces::NodeBaseInterface> node_base_interface_;
   std::unique_ptr<LifecycleNodeStateServicesManager> state_services_manager_hdl_;
+  std::shared_ptr<ChangeStateHandlerImpl> change_state_hdl_;
 
   mutable std::recursive_mutex state_machine_mutex_;
   rcl_lifecycle_state_machine_t state_machine_;
@@ -102,6 +111,9 @@ private:
   std::map<
     std::uint8_t,
     std::function<node_interfaces::LifecycleNodeInterface::CallbackReturn(const State &)>> cb_map_;
+  std::map<
+    std::uint8_t,
+    std::function<void(const State &, std::shared_ptr<ChangeStateHandler>)>> async_cb_map_;
 
   std::atomic<bool> is_transitioning_{false};
   std::shared_ptr<rmw_request_id_t> header_;
@@ -117,8 +129,14 @@ private:
     node_interfaces::LifecycleNodeInterface::CallbackReturn error_cb_code);
   void finalize_change_state(bool success);
 
+  bool
+  is_async_callback(unsigned int cb_id) const;
+
   node_interfaces::LifecycleNodeInterface::CallbackReturn
   execute_callback(unsigned int cb_id, const State & previous_state) const;
+
+  void
+  execute_async_callback(unsigned int cb_id, const State & previous_state);
 
   const char *
   get_label_for_return_code(node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code);

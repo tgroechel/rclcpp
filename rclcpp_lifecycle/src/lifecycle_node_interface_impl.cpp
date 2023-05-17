@@ -150,12 +150,14 @@ LifecycleNode::LifecycleNodeInterfaceImpl::trigger_transition(
   return get_current_state();
 }
 
-void
-LifecycleNode::LifecycleNodeInterfaceImpl::send_callback_resp(
-  node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code) const
+bool
+LifecycleNode::LifecycleNodeInterfaceImpl::register_async_callback(
+  std::uint8_t lifecycle_transition,
+  std::function<void(const State &, std::shared_ptr<ChangeStateHandler>)> & cb)
 {
-  state_manager_hdl_->process_callback_resp(cb_return_code);
+  return state_manager_hdl_->register_async_callback(lifecycle_transition, cb);
 }
+
 
 void
 LifecycleNode::LifecycleNodeInterfaceImpl::add_managed_entity(

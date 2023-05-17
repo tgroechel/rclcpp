@@ -22,6 +22,7 @@ find_package(rosidl_typesupport_cpp REQUIRED)
 
 ### CPP High level library
 add_library(rclcpp_lifecycle
+  src/change_state_handler_impl.cpp
   src/lifecycle_node.cpp
   src/lifecycle_node_entities_manager.cpp
   src/lifecycle_node_interface_impl.cpp
