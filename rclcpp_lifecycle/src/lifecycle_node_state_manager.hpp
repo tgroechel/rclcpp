@@ -32,15 +32,10 @@
 
 #include "rclcpp/macros.hpp"
 #include "rclcpp/node_interfaces/node_base_interface.hpp"
-#include "rclcpp/node_interfaces/node_services_interface.hpp"
 
 #include "rclcpp_lifecycle/node_interfaces/lifecycle_node_interface.hpp"
 
 #include "rmw/types.h"
-
-#include "lifecycle_node_state_services_manager.hpp"
-#include "change_state_handler_impl.hpp"
-
 
 namespace rclcpp_lifecycle
 {
@@ -54,7 +49,6 @@ public:
 
   void init(
     const std::shared_ptr<rclcpp::node_interfaces::NodeBaseInterface> node_base_interface,
-    const std::shared_ptr<rclcpp::node_interfaces::NodeServicesInterface> node_services_interface,
     bool enable_communication_interface);
 
   bool
@@ -66,6 +60,12 @@ public:
   register_async_callback(
     std::uint8_t lifecycle_transition,
     std::function<void(const State &, std::shared_ptr<ChangeStateHandler>)> & cb);
+
+  void
+  register_send_change_state_resp_cb(
+    std::function<void(
+      std::shared_ptr<rmw_request_id_t>,
+      std::unique_ptr<ChangeStateSrv::Response>)> cb);
 
   void process_callback_resp(
     node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code);
@@ -98,12 +98,19 @@ public:
 
   const rcl_lifecycle_transition_t * get_transition_by_label(const char * label) const;
 
+  rcl_lifecycle_com_interface_t & get_rcl_com_interface();
+
   virtual ~LifecycleNodeStateManager();
 
 private:
   std::shared_ptr<rclcpp::node_interfaces::NodeBaseInterface> node_base_interface_;
-  std::unique_ptr<LifecycleNodeStateServicesManager> state_services_manager_hdl_;
   std::shared_ptr<ChangeStateHandlerImpl> change_state_hdl_;
+  std::function<void(
+      std::shared_ptr<rmw_request_id_t>,
+      std::unique_ptr<ChangeStateSrv::Response>)>
+  send_change_state_resp_cb_;
+
+  void send_change_state_resp(std::shared_ptr<rmw_request_id_t> header, bool success);
 
   mutable std::recursive_mutex state_machine_mutex_;
   rcl_lifecycle_state_machine_t state_machine_;

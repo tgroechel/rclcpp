@@ -30,11 +30,10 @@
 #include "rclcpp_lifecycle/node_interfaces/lifecycle_node_interface.hpp"
 
 #include "rclcpp_lifecycle/transition.hpp"
+#include "lifecycle_node_state_manager.hpp"
 
 namespace rclcpp_lifecycle
 {
-class LifecycleNodeStateManager; // forward declaration
-
 class LifecycleNodeStateServicesManager
 {
   using ChangeStateSrv = lifecycle_msgs::srv::ChangeState;
@@ -47,12 +46,7 @@ public:
   LifecycleNodeStateServicesManager(
     std::shared_ptr<rclcpp::node_interfaces::NodeBaseInterface> node_base_interface,
     std::shared_ptr<rclcpp::node_interfaces::NodeServicesInterface> node_services_interface,
-    rcl_lifecycle_state_machine_t & state_machine,
     const std::weak_ptr<LifecycleNodeStateManager> state_manager_hdl);
-
-  void send_change_state_resp(
-    const std::shared_ptr<rmw_request_id_t> header,
-    bool success) const;
 
   void send_change_state_resp(
     const std::shared_ptr<rmw_request_id_t> header,

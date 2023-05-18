@@ -14,6 +14,8 @@
 
 #include "lifecycle_node_state_services_manager.hpp"
 #include "lifecycle_node_state_manager.hpp"
+#include "change_state_handler_impl.hpp"
+
 #include <cassert>
 #include <memory>
 
@@ -22,7 +24,6 @@ namespace rclcpp_lifecycle
 void
 LifecycleNodeStateManager::init(
   const std::shared_ptr<rclcpp::node_interfaces::NodeBaseInterface> node_base_interface,
-  const std::shared_ptr<rclcpp::node_interfaces::NodeServicesInterface> node_services_interface,
   bool enable_communication_interface)
 {
   using ChangeStateSrv = lifecycle_msgs::srv::ChangeState;
@@ -63,17 +64,8 @@ LifecycleNodeStateManager::init(
             node_base_interface_->get_name());
   }
 
-  if (enable_communication_interface) {
-    state_services_manager_hdl_ = std::make_unique<LifecycleNodeStateServicesManager>(
-      node_base_interface_,
-      node_services_interface,
-      state_machine_,
-      weak_from_this() // cannot be in constructor
-    );
-  }
-
   change_state_hdl_ = std::make_shared<ChangeStateHandlerImpl>(weak_from_this());
-  
+
   update_current_state_();
 }
 
@@ -101,6 +93,15 @@ LifecycleNodeStateManager::register_async_callback(
     cb_map_.erase(it);
   }
   return true;
+}
+
+void
+LifecycleNodeStateManager::register_send_change_state_resp_cb(
+  std::function<void(
+    std::shared_ptr<rmw_request_id_t>,
+    std::unique_ptr<ChangeStateSrv::Response>)> cb)
+{
+  send_change_state_resp_cb_ = cb;
 }
 
 const State &
@@ -152,10 +153,6 @@ void
 LifecycleNodeStateManager::process_callback_resp(
   node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code)
 {
-  if (cb_return_code == node_interfaces::LifecycleNodeInterface::CallbackReturn::DEFER) {
-    return;
-  }
-
   uint8_t current_state_id = get_current_state_id();
   if (in_non_error_transition_state(current_state_id)) {
     process_user_callback_resp(cb_return_code);
@@ -191,7 +188,7 @@ LifecycleNodeStateManager::change_state(
       node_base_interface_->get_name(),
       transition_id);
     if (header) {
-      state_services_manager_hdl_->send_change_state_resp(header, false);
+      send_change_state_resp(header, false);
     }
     return RCL_RET_ERROR;
   }
@@ -233,13 +230,13 @@ LifecycleNodeStateManager::change_state(
 
   if (is_async_callback(current_state_id)) {
     execute_async_callback(current_state_id, pre_transition_primary_state_);
-  } else{
+  } else {
     cb_return_code_ = execute_callback(
-    current_state_id,
-    pre_transition_primary_state_);
+      current_state_id,
+      pre_transition_primary_state_);
     process_callback_resp(cb_return_code_);
   }
-  
+
   return rcl_ret_;
 }
 
@@ -320,10 +317,20 @@ LifecycleNodeStateManager::finalize_change_state(bool success)
   update_current_state_();
 
   if (header_) {
-    state_services_manager_hdl_->send_change_state_resp(header_, success);
+    send_change_state_resp(header_, success);
     header_.reset();
   }
   is_transitioning_.store(false);
+}
+
+void
+LifecycleNodeStateManager::send_change_state_resp(
+  std::shared_ptr<rmw_request_id_t> header,
+  bool success)
+{
+  auto resp = std::make_unique<lifecycle_msgs::srv::ChangeState::Response>();
+  resp->success = success;
+  send_change_state_resp_cb_(header, std::move(resp));
 }
 
 bool LifecycleNodeStateManager::is_transitioning() const
@@ -444,6 +451,12 @@ LifecycleNodeStateManager::get_transition_by_label(const char * label) const
     rcl_lifecycle_get_transition_by_label(state_machine_.current_state, label);
 }
 
+rcl_lifecycle_com_interface_t &
+LifecycleNodeStateManager::get_rcl_com_interface()
+{
+  return state_machine_.com_interface;
+}
+
 uint8_t
 LifecycleNodeStateManager::get_current_state_id() const
 {
@@ -468,6 +481,7 @@ LifecycleNodeStateManager::in_error_transition_state(
 {
   return current_state_id == lifecycle_msgs::msg::State::TRANSITION_STATE_ERRORPROCESSING;
 }
+
 
 LifecycleNodeStateManager::~LifecycleNodeStateManager()
 {
