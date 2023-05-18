@@ -22,11 +22,10 @@
 
 namespace rclcpp_lifecycle
 {
-  
+
 class LifecycleNodeEntitiesManager
 {
 public:
-
   void
   on_activate() const;
 

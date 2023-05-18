@@ -49,8 +49,7 @@ public:
   {
     SUCCESS = lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_SUCCESS,
     FAILURE = lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_FAILURE,
-    ERROR = lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_ERROR,
-    DEFER = 3 // TODO @tgroechel2: extend transition messages
+    ERROR = lifecycle_msgs::msg::Transition::TRANSITION_CALLBACK_ERROR
   };
 
   /// Callback function for configure transition

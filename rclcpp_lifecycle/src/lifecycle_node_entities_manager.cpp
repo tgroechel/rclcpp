@@ -40,16 +40,16 @@ LifecycleNodeEntitiesManager::on_deactivate() const
 
 void
 LifecycleNodeEntitiesManager::add_managed_entity(
-std::weak_ptr<rclcpp_lifecycle::ManagedEntityInterface> managed_entity)
+  std::weak_ptr<rclcpp_lifecycle::ManagedEntityInterface> managed_entity)
 {
-    weak_managed_entities_.push_back(managed_entity);
+  weak_managed_entities_.push_back(managed_entity);
 }
 
 void
 LifecycleNodeEntitiesManager::add_timer_handle(
-std::shared_ptr<rclcpp::TimerBase> timer)
+  std::shared_ptr<rclcpp::TimerBase> timer)
 {
-    weak_timers_.push_back(timer);
+  weak_timers_.push_back(timer);
 }
 
 }  // namespace rclcpp_lifecycle

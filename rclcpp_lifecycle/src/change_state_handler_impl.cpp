@@ -20,19 +20,18 @@ namespace rclcpp_lifecycle
 {
 
 ChangeStateHandlerImpl::ChangeStateHandlerImpl(
-  const std::weak_ptr<LifecycleNodeStateManager> state_manager_hdl) 
-  : state_manager_hdl_(state_manager_hdl)
+  const std::weak_ptr<LifecycleNodeStateManager> state_manager_hdl)
+: state_manager_hdl_(state_manager_hdl)
 {
 }
-  
-void 
+
+void
 ChangeStateHandlerImpl::send_callback_resp(
-    node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code)
+  node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code)
 {
-  if(auto state_manager_hdl = state_manager_hdl_.lock())
-  {
+  if (auto state_manager_hdl = state_manager_hdl_.lock()) {
     state_manager_hdl->process_callback_resp(cb_return_code);
   }
-}   
+}
 
 }  // namespace rclcpp_lifecycle

@@ -23,14 +23,14 @@
 
 namespace rclcpp_lifecycle
 {
-  
+
 class ChangeStateHandlerImpl : public ChangeStateHandler
 {
 public:
   ChangeStateHandlerImpl(const std::weak_ptr<LifecycleNodeStateManager> state_manager_hdl);
-  
+
   void send_callback_resp(
-    node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code) override;   
+    node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code) override;
 
 private:
   std::weak_ptr<LifecycleNodeStateManager> state_manager_hdl_;
