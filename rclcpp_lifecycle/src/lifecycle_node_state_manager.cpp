@@ -64,8 +64,6 @@ LifecycleNodeStateManager::init(
             node_base_interface_->get_name());
   }
 
-  change_state_hdl_ = std::make_shared<ChangeStateHandlerImpl>(weak_from_this());
-
   update_current_state_();
 }
 
@@ -375,7 +373,9 @@ LifecycleNodeStateManager::execute_async_callback(
   if (it != async_cb_map_.end()) {
     auto callback = it->second;
     try {
-      callback(State(previous_state), change_state_hdl_);
+      callback(
+        State(previous_state),
+        std::make_shared<ChangeStateHandlerImpl>(weak_from_this()));
     } catch (const std::exception & e) {
       RCUTILS_LOG_ERROR("Caught exception in callback for transition %d", it->first);
       RCUTILS_LOG_ERROR("Original error: %s", e.what());

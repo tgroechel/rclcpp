@@ -26,10 +26,12 @@ public:
   /// Continues the change state process handling proper callback order
   /** Used within the user defined transition callback to continue the change state process
    *  similar to a service call response
-   *  Also used within the LifecycleNodeStateManager to continue the change state process
+   *  Note this only allows sending a single response callback per object
+   *  and will not send further responses if called mutiple times on the object
    * \param[in] cb_return_code result of user defined transition callback
+   * \return true if the response was successfully sent
    */
-  virtual void send_callback_resp(
+  virtual bool send_callback_resp(
     node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code) = 0;
 
   virtual ~ChangeStateHandler() {}

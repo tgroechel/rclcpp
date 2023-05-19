@@ -25,13 +25,18 @@ ChangeStateHandlerImpl::ChangeStateHandlerImpl(
 {
 }
 
-void
+bool
 ChangeStateHandlerImpl::send_callback_resp(
   node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code)
 {
-  if (auto state_manager_hdl = state_manager_hdl_.lock()) {
-    state_manager_hdl->process_callback_resp(cb_return_code);
+  if (!response_sent_.load()) {
+    if (auto state_manager_hdl = state_manager_hdl_.lock()) {
+      state_manager_hdl->process_callback_resp(cb_return_code);
+      response_sent_.store(true);
+      return true;
+    }
   }
+  return false;
 }
 
 }  // namespace rclcpp_lifecycle

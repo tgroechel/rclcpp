@@ -16,6 +16,7 @@
 #define CHANGE_STATE_HANDLER_IMPL_HPP_
 
 #include <memory>
+#include <atomic>
 
 #include "rclcpp_lifecycle/change_state_handler.hpp"
 #include "rclcpp/node_interfaces/node_base_interface.hpp"
@@ -29,11 +30,12 @@ class ChangeStateHandlerImpl : public ChangeStateHandler
 public:
   ChangeStateHandlerImpl(const std::weak_ptr<LifecycleNodeStateManager> state_manager_hdl);
 
-  void send_callback_resp(
+  bool send_callback_resp(
     node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code) override;
 
 private:
   std::weak_ptr<LifecycleNodeStateManager> state_manager_hdl_;
+  std::atomic<bool> response_sent_{false};
 };
 
 }  // namespace rclcpp_lifecycle
