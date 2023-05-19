@@ -153,8 +153,26 @@ LifecycleNodeStateManager::process_callback_resp(
 {
   uint8_t current_state_id = get_current_state_id();
   if (in_non_error_transition_state(current_state_id)) {
+    if (transition_cb_completed_) {
+      RCUTILS_LOG_ERROR(
+        "process_callback_resp recursively running user"
+        " transition function with id%d",
+        current_state_id);
+      rcl_ret_error();
+      return;
+    }
+    transition_cb_completed_ = true;
     process_user_callback_resp(cb_return_code);
   } else if (in_error_transition_state(current_state_id)) {
+    if (on_error_cb_completed_) {
+      RCUTILS_LOG_ERROR(
+        "process_callback_resp recursively running user"
+        " transition function with id%d",
+        current_state_id);
+      rcl_ret_error();
+      return;
+    }
+    on_error_cb_completed_ = true;
     process_on_error_resp(cb_return_code);
   } else {
     RCUTILS_LOG_ERROR(
@@ -195,6 +213,8 @@ LifecycleNodeStateManager::change_state(
   header_ = header;
   transition_id_ = transition_id;
   rcl_ret_ = RCL_RET_OK;
+  transition_cb_completed_ = false;
+  on_error_cb_completed_ = false;
 
   unsigned int current_state_id;
   {

@@ -126,6 +126,8 @@ private:
   std::shared_ptr<rmw_request_id_t> header_;
   State pre_transition_primary_state_;
   uint8_t transition_id_;
+  bool transition_cb_completed_;
+  bool on_error_cb_completed_;
 
   node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code_;
   rcl_ret_t rcl_ret_;
