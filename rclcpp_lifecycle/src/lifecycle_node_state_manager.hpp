@@ -59,7 +59,7 @@ public:
   bool
   register_async_callback(
     std::uint8_t lifecycle_transition,
-    std::function<void(const State &, std::shared_ptr<ChangeStateHandler>)> & cb);
+    std::function<void(const State &, std::unique_ptr<ChangeStateHandler>)> & cb);
 
   void
   register_send_change_state_resp_cb(
@@ -104,7 +104,6 @@ public:
 
 private:
   std::shared_ptr<rclcpp::node_interfaces::NodeBaseInterface> node_base_interface_;
-  std::shared_ptr<ChangeStateHandlerImpl> change_state_hdl_;
   std::function<void(
       std::shared_ptr<rmw_request_id_t>,
       std::unique_ptr<ChangeStateSrv::Response>)>
@@ -120,7 +119,7 @@ private:
     std::function<node_interfaces::LifecycleNodeInterface::CallbackReturn(const State &)>> cb_map_;
   std::map<
     std::uint8_t,
-    std::function<void(const State &, std::shared_ptr<ChangeStateHandler>)>> async_cb_map_;
+    std::function<void(const State &, std::unique_ptr<ChangeStateHandler>)>> async_cb_map_;
 
   std::atomic<bool> is_transitioning_{false};
   std::shared_ptr<rmw_request_id_t> header_;

@@ -503,7 +503,7 @@ LifecycleNode::register_on_configure(
 
 bool
 LifecycleNode::register_async_on_configure(
-  std::function<void(const State &, std::shared_ptr<ChangeStateHandler>)> fcn)
+  std::function<void(const State &, std::unique_ptr<ChangeStateHandler>)> fcn)
 {
   return impl_->register_async_callback(
     lifecycle_msgs::msg::State::TRANSITION_STATE_CONFIGURING, fcn);
@@ -519,7 +519,7 @@ LifecycleNode::register_on_cleanup(
 
 bool
 LifecycleNode::register_async_on_cleanup(
-  std::function<void(const State &, std::shared_ptr<ChangeStateHandler>)> fcn)
+  std::function<void(const State &, std::unique_ptr<ChangeStateHandler>)> fcn)
 {
   return impl_->register_async_callback(
     lifecycle_msgs::msg::State::TRANSITION_STATE_CLEANINGUP, fcn);
@@ -535,7 +535,7 @@ LifecycleNode::register_on_shutdown(
 
 bool
 LifecycleNode::register_async_on_shutdown(
-  std::function<void(const State &, std::shared_ptr<ChangeStateHandler>)> fcn)
+  std::function<void(const State &, std::unique_ptr<ChangeStateHandler>)> fcn)
 {
   return impl_->register_async_callback(
     lifecycle_msgs::msg::State::TRANSITION_STATE_SHUTTINGDOWN, fcn);
@@ -551,7 +551,7 @@ LifecycleNode::register_on_activate(
 
 bool
 LifecycleNode::register_async_on_activate(
-  std::function<void(const State &, std::shared_ptr<ChangeStateHandler>)> fcn)
+  std::function<void(const State &, std::unique_ptr<ChangeStateHandler>)> fcn)
 {
   return impl_->register_async_callback(
     lifecycle_msgs::msg::State::TRANSITION_STATE_ACTIVATING, fcn);
@@ -567,7 +567,7 @@ LifecycleNode::register_on_deactivate(
 
 bool
 LifecycleNode::register_async_on_deactivate(
-  std::function<void(const State &, std::shared_ptr<ChangeStateHandler>)> fcn)
+  std::function<void(const State &, std::unique_ptr<ChangeStateHandler>)> fcn)
 {
   return impl_->register_async_callback(
     lifecycle_msgs::msg::State::TRANSITION_STATE_DEACTIVATING, fcn);
@@ -583,7 +583,7 @@ LifecycleNode::register_on_error(
 
 bool
 LifecycleNode::register_async_on_error(
-  std::function<void(const State &, std::shared_ptr<ChangeStateHandler>)> fcn)
+  std::function<void(const State &, std::unique_ptr<ChangeStateHandler>)> fcn)
 {
   return impl_->register_async_callback(
     lifecycle_msgs::msg::State::TRANSITION_STATE_ERRORPROCESSING, fcn);

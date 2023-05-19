@@ -66,7 +66,7 @@ public:
   bool
   register_async_callback(
     std::uint8_t lifecycle_transition,
-    std::function<void(const State &, std::shared_ptr<ChangeStateHandler>)> & cb);
+    std::function<void(const State &, std::unique_ptr<ChangeStateHandler>)> & cb);
 
   const State &
   get_current_state() const;

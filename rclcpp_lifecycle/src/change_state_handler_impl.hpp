@@ -16,6 +16,7 @@
 #define CHANGE_STATE_HANDLER_IMPL_HPP_
 
 #include <memory>
+#include <atomic>
 
 #include "rclcpp_lifecycle/change_state_handler.hpp"
 #include "rclcpp/node_interfaces/node_base_interface.hpp"
@@ -34,6 +35,7 @@ public:
 
 private:
   std::weak_ptr<LifecycleNodeStateManager> state_manager_hdl_;
+  std::atomic<bool> response_sent_{false};
 };
 
 }  // namespace rclcpp_lifecycle
