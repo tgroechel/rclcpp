@@ -16,10 +16,13 @@
 #define LIFECYCLE_NODE_STATE_SERVICES_MANAGER_HPP_
 
 #include <vector>
+#include <string>
+#include <memory>
 
 #include "rcl_lifecycle/rcl_lifecycle.h"
 
 #include "lifecycle_msgs/msg/transition_event.hpp"
+#include "lifecycle_msgs/srv/cancel_transition.hpp"
 #include "lifecycle_msgs/srv/change_state.hpp"
 #include "lifecycle_msgs/srv/get_state.hpp"
 #include "lifecycle_msgs/srv/get_available_states.hpp"
@@ -36,6 +39,7 @@ namespace rclcpp_lifecycle
 {
 class LifecycleNodeStateServicesManager
 {
+  using CancelTransitionSrv = lifecycle_msgs::srv::CancelTransition;
   using ChangeStateSrv = lifecycle_msgs::srv::ChangeState;
   using GetStateSrv = lifecycle_msgs::srv::GetState;
   using GetAvailableStatesSrv = lifecycle_msgs::srv::GetAvailableStates;
@@ -49,8 +53,13 @@ public:
     const std::weak_ptr<LifecycleNodeStateManager> state_manager_hdl);
 
   void send_change_state_resp(
-    const std::shared_ptr<rmw_request_id_t> header,
-    const std::unique_ptr<ChangeStateSrv::Response> resp) const;
+    bool success,
+    const std::shared_ptr<rmw_request_id_t> header) const;
+
+  void send_cancel_transition_resp(
+    const std::string & error_msg,
+    bool success,
+    const std::shared_ptr<rmw_request_id_t> header) const;
 
 private:
   void
@@ -83,6 +92,11 @@ private:
     std::shared_ptr<GetAvailableTransitionsSrv::Response> resp) const;
 
   void
+  on_cancel_transition(
+    const std::shared_ptr<rmw_request_id_t> header,
+    const std::shared_ptr<CancelTransitionSrv::Request> req) const;
+
+  void
   copy_transitions_vector_to_resp(
     const std::vector<Transition> transition_vec,
     std::shared_ptr<GetAvailableTransitionsSrv::Response> resp) const;
@@ -95,12 +109,15 @@ private:
     std::shared_ptr<rclcpp::Service<GetAvailableTransitionsSrv>>;
   using GetTransitionGraphSrvPtr =
     std::shared_ptr<rclcpp::Service<GetAvailableTransitionsSrv>>;
+  using CancelTransitionSrvPtr =
+    std::shared_ptr<rclcpp::Service<CancelTransitionSrv>>;
 
   ChangeStateSrvPtr srv_change_state_;
   GetStateSrvPtr srv_get_state_;
   GetAvailableStatesSrvPtr srv_get_available_states_;
   GetAvailableTransitionsSrvPtr srv_get_available_transitions_;
   GetTransitionGraphSrvPtr srv_get_transition_graph_;
+  CancelTransitionSrvPtr srv_cancel_transition_;
 
   std::weak_ptr<LifecycleNodeStateManager> state_manager_hdl_;
 };

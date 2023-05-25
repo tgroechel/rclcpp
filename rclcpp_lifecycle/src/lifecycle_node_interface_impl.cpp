@@ -30,6 +30,7 @@
 
 #include "rclcpp/node_interfaces/node_base_interface.hpp"
 #include "rclcpp/node_interfaces/node_services_interface.hpp"
+#include "rclcpp/node_interfaces/node_timers_interface.hpp"
 
 #include "rclcpp_lifecycle/node_interfaces/lifecycle_node_interface.hpp"
 
@@ -50,9 +51,11 @@ namespace rclcpp_lifecycle
 
 LifecycleNode::LifecycleNodeInterfaceImpl::LifecycleNodeInterfaceImpl(
   std::shared_ptr<rclcpp::node_interfaces::NodeBaseInterface> node_base_interface,
-  std::shared_ptr<rclcpp::node_interfaces::NodeServicesInterface> node_services_interface)
+  std::shared_ptr<rclcpp::node_interfaces::NodeServicesInterface> node_services_interface,
+  std::shared_ptr<rclcpp::node_interfaces::NodeTimersInterface> node_timers_interface)
 : node_base_interface_(node_base_interface),
-  node_services_interface_(node_services_interface)
+  node_services_interface_(node_services_interface),
+  node_timers_interface_(node_timers_interface)
 {
 }
 
@@ -66,6 +69,7 @@ LifecycleNode::LifecycleNodeInterfaceImpl::init(bool enable_communication_interf
   state_manager_hdl_ = std::make_shared<LifecycleNodeStateManager>();
   state_manager_hdl_->init(
     node_base_interface_,
+    node_timers_interface_,
     enable_communication_interface
   );
   if (enable_communication_interface) {

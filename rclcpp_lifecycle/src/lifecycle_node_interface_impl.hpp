@@ -33,6 +33,7 @@
 #include "rclcpp/macros.hpp"
 #include "rclcpp/node_interfaces/node_base_interface.hpp"
 #include "rclcpp/node_interfaces/node_services_interface.hpp"
+#include "rclcpp/node_interfaces/node_timers_interface.hpp"
 
 #include "rclcpp_lifecycle/node_interfaces/lifecycle_node_interface.hpp"
 
@@ -51,7 +52,8 @@ class LifecycleNode::LifecycleNodeInterfaceImpl final
 public:
   LifecycleNodeInterfaceImpl(
     std::shared_ptr<rclcpp::node_interfaces::NodeBaseInterface> node_base_interface,
-    std::shared_ptr<rclcpp::node_interfaces::NodeServicesInterface> node_services_interface);
+    std::shared_ptr<rclcpp::node_interfaces::NodeServicesInterface> node_services_interface,
+    std::shared_ptr<rclcpp::node_interfaces::NodeTimersInterface> node_timers_interface);
 
   ~LifecycleNodeInterfaceImpl();
 
@@ -116,9 +118,12 @@ private:
 
   using NodeBasePtr = std::shared_ptr<rclcpp::node_interfaces::NodeBaseInterface>;
   using NodeServicesPtr = std::shared_ptr<rclcpp::node_interfaces::NodeServicesInterface>;
+  using NodeTimersPtr = std::shared_ptr<rclcpp::node_interfaces::NodeTimersInterface>;
 
   NodeBasePtr node_base_interface_;
   NodeServicesPtr node_services_interface_;
+  NodeTimersPtr node_timers_interface_;
+
   std::shared_ptr<LifecycleNodeStateManager> state_manager_hdl_;
   std::unique_ptr<LifecycleNodeStateServicesManager> state_services_manager_hdl_;
   std::unique_ptr<LifecycleNodeEntitiesManager> managed_entities_manager_hdl_;

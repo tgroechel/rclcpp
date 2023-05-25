@@ -33,9 +33,27 @@ public:
   bool send_callback_resp(
     node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code) override;
 
+  bool handled_transition_cancel(bool success) override;
+
+  bool transition_is_cancelled() const override;
+
+  bool response_sent() const override;
+
+  /**
+   * @brief Marks this transition as cancelled. It is up to the user to check if the transition
+   *       has been cancelled and attempt to handle it.
+   */
+  void cancel_transition();
+
+  /**
+   * @brief Invalidate the handler by setting the response_sent_ flag to true
+   */
+  void invalidate();
+
 private:
   std::weak_ptr<LifecycleNodeStateManager> state_manager_hdl_;
   std::atomic<bool> response_sent_{false};
+  std::atomic<bool> transition_is_cancelled_{false}; // flag to check if the handler is valid
 };
 
 }  // namespace rclcpp_lifecycle

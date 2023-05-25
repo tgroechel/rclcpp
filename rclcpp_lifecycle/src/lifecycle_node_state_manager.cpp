@@ -18,12 +18,14 @@
 
 #include <cassert>
 #include <memory>
+#include <chrono>
 
 namespace rclcpp_lifecycle
 {
 void
 LifecycleNodeStateManager::init(
   const std::shared_ptr<rclcpp::node_interfaces::NodeBaseInterface> node_base_interface,
+  std::shared_ptr<rclcpp::node_interfaces::NodeTimersInterface> node_timers_interface,
   bool enable_communication_interface)
 {
   using ChangeStateSrv = lifecycle_msgs::srv::ChangeState;
@@ -32,6 +34,7 @@ LifecycleNodeStateManager::init(
   using GetAvailableTransitionsSrv = lifecycle_msgs::srv::GetAvailableTransitions;
 
   node_base_interface_ = node_base_interface;
+  node_timers_interface_ = node_timers_interface;
 
   rcl_node_t * node_handle = node_base_interface_->get_rcl_node_handle();
   const rcl_node_options_t * node_options =
@@ -93,15 +96,6 @@ LifecycleNodeStateManager::register_async_callback(
   return true;
 }
 
-void
-LifecycleNodeStateManager::register_send_change_state_resp_cb(
-  std::function<void(
-    std::shared_ptr<rmw_request_id_t>,
-    std::unique_ptr<ChangeStateSrv::Response>)> cb)
-{
-  send_change_state_resp_cb_ = cb;
-}
-
 const State &
 LifecycleNodeStateManager::get_current_state() const
 {
@@ -147,39 +141,10 @@ LifecycleNodeStateManager::get_transition_graph() const
   return transitions;
 }
 
-void
-LifecycleNodeStateManager::process_callback_resp(
-  node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code)
+bool
+LifecycleNodeStateManager::is_transitioning() const
 {
-  uint8_t current_state_id = get_current_state_id();
-  if (in_non_error_transition_state(current_state_id)) {
-    if (transition_cb_completed_) {
-      RCUTILS_LOG_ERROR(
-        "process_callback_resp recursively running user"
-        " transition function with id%d",
-        current_state_id);
-      rcl_ret_error();
-      return;
-    }
-    transition_cb_completed_ = true;
-    process_user_callback_resp(cb_return_code);
-  } else if (in_error_transition_state(current_state_id)) {
-    if (on_error_cb_completed_) {
-      RCUTILS_LOG_ERROR(
-        "process_callback_resp recursively running user"
-        " transition function with id%d",
-        current_state_id);
-      rcl_ret_error();
-      return;
-    }
-    on_error_cb_completed_ = true;
-    process_on_error_resp(cb_return_code);
-  } else {
-    RCUTILS_LOG_ERROR(
-      "process_callback_resp failed for %s: not in a transition state",
-      node_base_interface_->get_name());
-    rcl_ret_error();
-  }
+  return is_transitioning_.load();
 }
 
 rcl_ret_t
@@ -196,6 +161,7 @@ LifecycleNodeStateManager::change_state(
 rcl_ret_t
 LifecycleNodeStateManager::change_state(
   uint8_t transition_id,
+  std::function<void(bool, std::shared_ptr<rmw_request_id_t>)> callback /*= nullptr*/,
   const std::shared_ptr<rmw_request_id_t> header /* = nullptr*/)
 {
   if (is_transitioning()) {
@@ -203,14 +169,15 @@ LifecycleNodeStateManager::change_state(
       "%s currently in transition, failing requested transition id %d.",
       node_base_interface_->get_name(),
       transition_id);
-    if (header) {
-      send_change_state_resp(header, false);
+    if (callback) {
+      callback(false, header);
     }
     return RCL_RET_ERROR;
   }
 
   is_transitioning_.store(true);
-  header_ = header;
+  send_change_state_resp_cb_ = callback;
+  change_state_header_ = header;
   transition_id_ = transition_id;
   rcl_ret_ = RCL_RET_OK;
   transition_cb_completed_ = false;
@@ -256,6 +223,161 @@ LifecycleNodeStateManager::change_state(
   }
 
   return rcl_ret_;
+}
+
+void
+LifecycleNodeStateManager::process_callback_resp(
+  node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code)
+{
+  // we have received a response from the user callback so we can invalidate the handler
+  invalidate_change_state_handler();
+
+  uint8_t current_state_id = get_current_state_id();
+  if (in_non_error_transition_state(current_state_id)) {
+    if (transition_cb_completed_) {
+      RCUTILS_LOG_ERROR(
+        "process_callback_resp recursively running user"
+        " transition function with id%d",
+        current_state_id);
+      rcl_ret_error();
+      return;
+    }
+    transition_cb_completed_ = true;
+    process_user_callback_resp(cb_return_code);
+  } else if (in_error_transition_state(current_state_id)) {
+    if (on_error_cb_completed_) {
+      RCUTILS_LOG_ERROR(
+        "process_callback_resp recursively running user"
+        " transition function with id%d",
+        current_state_id);
+      rcl_ret_error();
+      return;
+    }
+    on_error_cb_completed_ = true;
+    process_on_error_resp(cb_return_code);
+  } else {
+    RCUTILS_LOG_ERROR(
+      "process_callback_resp failed for %s: not in a transition state",
+      node_base_interface_->get_name());
+    rcl_ret_error();
+  }
+}
+
+bool
+LifecycleNodeStateManager::is_cancelling_transition() const
+{
+  return is_cancelling_transition_.load();
+}
+
+void
+LifecycleNodeStateManager::cancel_transition(
+  float timeout_sec,
+  std::function<void(std::string, bool, std::shared_ptr<rmw_request_id_t>)> callback,
+  std::shared_ptr<rmw_request_id_t> header)
+{
+  if (!is_transitioning()) {
+    if (callback) {
+      callback("Not in a transition, cannot cancel", false, header);
+    }
+    return;
+  } else if (is_cancelling_transition()) {
+    if (callback) {
+      callback("Already cancelling transition", false, header);
+    }
+    return;
+  } else if (!is_running_async_callback()) {
+    if (callback) {
+      callback("Not running async transition callback, cannot cancel", false, header);
+    }
+    return;
+  }
+
+  is_cancelling_transition_.store(true);
+  send_cancel_transition_resp_cb_ = callback;
+  cancel_transition_header_ = header;
+  user_handled_transition_cancel_.store(false);
+  mark_transition_as_cancelled();
+
+  if (timeout_sec > 0) {
+    cancel_timer_ = rclcpp::create_wall_timer(
+      std::chrono::duration<double, std::chrono::milliseconds::period>(timeout_sec * 1000),
+      [this]() {
+        if (!user_handled_transition_cancel_.load() && is_cancelling_transition_.load()) {
+          finalize_cancel_transition("Cancel request timed out, user did not handle cancel", false);
+        }
+        cancel_timer_.reset();
+      },
+      node_base_interface_->get_default_callback_group(),
+      node_base_interface_.get(),
+      node_timers_interface_.get()
+    );
+  }
+}
+
+void
+LifecycleNodeStateManager::user_handled_transition_cancel(bool success)
+{
+  if (!is_cancelling_transition()) {
+    RCUTILS_LOG_WARN("Received user handled cancel but not in a cancel transition");
+    return;
+  }
+  user_handled_transition_cancel_.store(true);
+  cancel_timer_.reset();
+
+  if (success) {
+    finalize_cancel_transition("", true);
+    // If the user successfully "unwound" the transition and handled the cancel
+    // successfully, we proceed as if the transition returned a FAILURE.
+    // This allows us to use the same logic as if the user returned a FAILURE
+    // which is often recovering to the prior primary state.
+    process_callback_resp(
+      node_interfaces::LifecycleNodeInterface::CallbackReturn::FAILURE);
+  } else {
+    finalize_cancel_transition("User handled cancel but did not succeed", false);
+  }
+}
+
+int
+LifecycleNodeStateManager::get_transition_id_from_request(
+  const ChangeStateSrv::Request::SharedPtr req)
+{
+  std::lock_guard<std::recursive_mutex> lock(state_machine_mutex_);
+  if (rcl_lifecycle_state_machine_is_initialized(&state_machine_) != RCL_RET_OK) {
+    throw std::runtime_error("Can't get state. State machine is not initialized.");
+  }
+  // Use transition.label over transition.id if transition.label exits
+  // label has higher precedence to the id due to ROS 2 defaulting integers to 0
+  // e.g.: srv call of {transition: {label: configure}}
+  //       transition.id    = 0           -> would be equiv to "create"
+  //       transition.label = "configure" -> id is 1, use this
+  if (req->transition.label.size() != 0) {
+    auto rcl_transition = rcl_lifecycle_get_transition_by_label(
+      state_machine_.current_state, req->transition.label.c_str());
+    if (rcl_transition == nullptr) {
+      // send fail response printing out the requested label
+      RCUTILS_LOG_ERROR(
+        "ChangeState srv request failed: Transition label '%s'"
+        " is not available in the current state '%s'",
+        req->transition.label.c_str(), state_machine_.current_state->label);
+      return -1;
+    }
+    return static_cast<int>(rcl_transition->id);
+  }
+  return req->transition.id;
+}
+
+const rcl_lifecycle_transition_t *
+LifecycleNodeStateManager::get_transition_by_label(const char * label) const
+{
+  std::lock_guard<std::recursive_mutex> lock(state_machine_mutex_);
+  return
+    rcl_lifecycle_get_transition_by_label(state_machine_.current_state, label);
+}
+
+rcl_lifecycle_com_interface_t &
+LifecycleNodeStateManager::get_rcl_com_interface()
+{
+  return state_machine_.com_interface;
 }
 
 void
@@ -334,33 +456,12 @@ LifecycleNodeStateManager::finalize_change_state(bool success)
   rcl_ret_ = success ? RCL_RET_OK : RCL_RET_ERROR;
   update_current_state_();
 
-  if (header_) {
-    send_change_state_resp(header_, success);
-    header_.reset();
+  if (send_change_state_resp_cb_) {
+    send_change_state_resp_cb_(success, change_state_header_);
+    change_state_header_.reset();
+    send_change_state_resp_cb_ = nullptr;
   }
   is_transitioning_.store(false);
-}
-
-void
-LifecycleNodeStateManager::send_change_state_resp(
-  std::shared_ptr<rmw_request_id_t> header,
-  bool success)
-{
-  auto resp = std::make_unique<lifecycle_msgs::srv::ChangeState::Response>();
-  resp->success = success;
-  send_change_state_resp_cb_(header, std::move(resp));
-}
-
-bool LifecycleNodeStateManager::is_transitioning() const
-{
-  return is_transitioning_.load();
-}
-
-bool
-LifecycleNodeStateManager::is_async_callback(
-  unsigned int cb_id) const
-{
-  return async_cb_map_.find(static_cast<uint8_t>(cb_id)) != async_cb_map_.end();
 }
 
 node_interfaces::LifecycleNodeInterface::CallbackReturn
@@ -384,6 +485,14 @@ LifecycleNodeStateManager::execute_callback(
   return cb_success;
 }
 
+
+bool
+LifecycleNodeStateManager::is_async_callback(
+  unsigned int cb_id) const
+{
+  return async_cb_map_.find(static_cast<uint8_t>(cb_id)) != async_cb_map_.end();
+}
+
 void
 LifecycleNodeStateManager::execute_async_callback(
   unsigned int cb_id,
@@ -392,22 +501,21 @@ LifecycleNodeStateManager::execute_async_callback(
   auto it = async_cb_map_.find(static_cast<uint8_t>(cb_id));
   if (it != async_cb_map_.end()) {
     auto callback = it->second;
-    try {
-      callback(
-        State(previous_state),
-        std::make_shared<ChangeStateHandlerImpl>(weak_from_this()));
-    } catch (const std::exception & e) {
-      RCUTILS_LOG_ERROR("Caught exception in callback for transition %d", it->first);
-      RCUTILS_LOG_ERROR("Original error: %s", e.what());
-      process_callback_resp(
-        node_interfaces::LifecycleNodeInterface::CallbackReturn::ERROR);
-    }
+    callback(State(previous_state), create_new_change_state_handler());
   } else {
     // in case no callback was attached, we forward directly
     process_callback_resp(
       node_interfaces::LifecycleNodeInterface::CallbackReturn::SUCCESS);
   }
 }
+
+std::shared_ptr<ChangeStateHandler>
+LifecycleNodeStateManager::create_new_change_state_handler()
+{
+  change_state_hdl_ = std::make_shared<ChangeStateHandlerImpl>(weak_from_this());
+  return change_state_hdl_;
+}
+
 const char *
 LifecycleNodeStateManager::get_label_for_return_code(
   node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code)
@@ -427,54 +535,11 @@ LifecycleNodeStateManager::rcl_ret_error()
   finalize_change_state(false);
 }
 
-int
-LifecycleNodeStateManager::get_transition_id_from_request(
-  const ChangeStateSrv::Request::SharedPtr req)
-{
-  std::lock_guard<std::recursive_mutex> lock(state_machine_mutex_);
-  if (rcl_lifecycle_state_machine_is_initialized(&state_machine_) != RCL_RET_OK) {
-    throw std::runtime_error("Can't get state. State machine is not initialized.");
-  }
-  // Use transition.label over transition.id if transition.label exits
-  // label has higher precedence to the id due to ROS 2 defaulting integers to 0
-  // e.g.: srv call of {transition: {label: configure}}
-  //       transition.id    = 0           -> would be equiv to "create"
-  //       transition.label = "configure" -> id is 1, use this
-  if (req->transition.label.size() != 0) {
-    auto rcl_transition = rcl_lifecycle_get_transition_by_label(
-      state_machine_.current_state, req->transition.label.c_str());
-    if (rcl_transition == nullptr) {
-      // send fail response printing out the requested label
-      RCUTILS_LOG_ERROR(
-        "ChangeState srv request failed: Transition label '%s'"
-        " is not available in the current state '%s'",
-        req->transition.label.c_str(), state_machine_.current_state->label);
-      return -1;
-    }
-    return static_cast<int>(rcl_transition->id);
-  }
-  return req->transition.id;
-}
-
 void
 LifecycleNodeStateManager::update_current_state_()
 {
   std::lock_guard<std::recursive_mutex> lock(state_machine_mutex_);
   current_state_ = State(state_machine_.current_state);
-}
-
-const rcl_lifecycle_transition_t *
-LifecycleNodeStateManager::get_transition_by_label(const char * label) const
-{
-  std::lock_guard<std::recursive_mutex> lock(state_machine_mutex_);
-  return
-    rcl_lifecycle_get_transition_by_label(state_machine_.current_state, label);
-}
-
-rcl_lifecycle_com_interface_t &
-LifecycleNodeStateManager::get_rcl_com_interface()
-{
-  return state_machine_.com_interface;
 }
 
 uint8_t
@@ -502,6 +567,41 @@ LifecycleNodeStateManager::in_error_transition_state(
   return current_state_id == lifecycle_msgs::msg::State::TRANSITION_STATE_ERRORPROCESSING;
 }
 
+bool
+LifecycleNodeStateManager::is_running_async_callback() const
+{
+  return change_state_hdl_ && !change_state_hdl_->response_sent();
+}
+
+void
+LifecycleNodeStateManager::invalidate_change_state_handler()
+{
+  if (change_state_hdl_) {
+    change_state_hdl_->invalidate();
+    change_state_hdl_.reset();
+  }
+}
+
+bool
+LifecycleNodeStateManager::mark_transition_as_cancelled()
+{
+  if (change_state_hdl_) {
+    change_state_hdl_->cancel_transition();
+    return true;
+  }
+  return false;
+}
+
+void
+LifecycleNodeStateManager::finalize_cancel_transition(const std::string & error_msg, bool success)
+{
+  if (send_cancel_transition_resp_cb_) {
+    send_cancel_transition_resp_cb_(error_msg, success, cancel_transition_header_);
+    cancel_transition_header_.reset();
+    send_cancel_transition_resp_cb_ = nullptr;
+  }
+  is_cancelling_transition_.store(false);
+}
 
 LifecycleNodeStateManager::~LifecycleNodeStateManager()
 {
@@ -516,7 +616,10 @@ LifecycleNodeStateManager::~LifecycleNodeStateManager()
       "rclcpp_lifecycle",
       "failed to destroy rcl_state_machine");
   }
-  header_.reset();
+  send_change_state_resp_cb_ = nullptr;
+  send_cancel_transition_resp_cb_ = nullptr;
+  change_state_header_.reset();
+  cancel_transition_header_.reset();
   node_base_interface_.reset();
 }
 

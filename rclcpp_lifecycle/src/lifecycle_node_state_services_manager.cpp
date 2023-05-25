@@ -13,6 +13,9 @@
 // limitations under the License.
 
 #include <vector>
+#include <string>
+#include <utility>
+
 #include "lifecycle_node_state_services_manager.hpp"
 #include "lifecycle_node_state_manager.hpp"
 
@@ -47,11 +50,6 @@ LifecycleNodeStateServicesManager::LifecycleNodeStateServicesManager(
       node_services_interface->add_service(
         std::dynamic_pointer_cast<rclcpp::ServiceBase>(srv_change_state_),
         nullptr);
-
-      state_manager_hdl->register_send_change_state_resp_cb(
-        std::bind(
-          &LifecycleNodeStateServicesManager::send_change_state_resp,
-          this, std::placeholders::_1, std::placeholders::_2));
     }
 
     { // get_state
@@ -119,15 +117,50 @@ LifecycleNodeStateServicesManager::LifecycleNodeStateServicesManager(
         std::dynamic_pointer_cast<rclcpp::ServiceBase>(srv_get_transition_graph_),
         nullptr);
     }
+
+    { // cancel_transition
+      auto cb = std::bind(
+        &LifecycleNodeStateServicesManager::on_cancel_transition, this,
+        std::placeholders::_1, std::placeholders::_2);
+      rclcpp::AnyServiceCallback<CancelTransitionSrv> any_cb;
+      any_cb.set(std::move(cb));
+
+      rcl_service_options_t cancel_srv_options = rcl_service_get_default_options();
+
+      srv_cancel_transition_ =
+        std::make_shared<rclcpp::Service<CancelTransitionSrv>>(
+        node_base_interface->get_shared_rcl_node_handle(),
+        std::string(node_base_interface->get_name()) + "/cancel_transition",
+        any_cb,
+        cancel_srv_options);
+
+      node_services_interface->add_service(
+        std::dynamic_pointer_cast<rclcpp::ServiceBase>(srv_cancel_transition_),
+        nullptr);
+    }
   }
 }
 
 void
 LifecycleNodeStateServicesManager::send_change_state_resp(
-  const std::shared_ptr<rmw_request_id_t> header,
-  const std::unique_ptr<ChangeStateSrv::Response> resp) const
+  bool success,
+  const std::shared_ptr<rmw_request_id_t> header) const
 {
+  auto resp = std::make_unique<ChangeStateSrv::Response>();
+  resp->success = success;
   srv_change_state_->send_response(*header, *resp);
+}
+
+void
+LifecycleNodeStateServicesManager::send_cancel_transition_resp(
+  const std::string & error_msg,
+  bool success,
+  const std::shared_ptr<rmw_request_id_t> header) const
+{
+  auto resp = std::make_unique<CancelTransitionSrv::Response>();
+  resp->success = success;
+  resp->error_msg = error_msg;
+  srv_cancel_transition_->send_response(*header, *resp);
 }
 
 void
@@ -138,12 +171,17 @@ LifecycleNodeStateServicesManager::on_change_state(
   if (auto state_hdl = state_manager_hdl_.lock()) {
     int transition_id = state_hdl->get_transition_id_from_request(req);
     if (transition_id < 0) {
-      auto resp = std::make_unique<ChangeStateSrv::Response>();
-      resp->success = false;
-      send_change_state_resp(header, std::move(resp));
+      send_change_state_resp(false, header);
     } else {
-      state_hdl->change_state(transition_id, header);
+      state_hdl->change_state(
+        transition_id,
+        std::bind(
+          &LifecycleNodeStateServicesManager::send_change_state_resp,
+          this, std::placeholders::_1, std::placeholders::_2),
+        header);
     }
+  } else { /*Unable to lock StateManager*/
+    send_change_state_resp(false, header);
   }
 }
 
@@ -207,6 +245,24 @@ LifecycleNodeStateServicesManager::on_get_transition_graph(
     std::vector<Transition> available_transitions = state_hdl->get_transition_graph();
     copy_transitions_vector_to_resp(available_transitions, resp);
   }
+}
+
+void
+LifecycleNodeStateServicesManager::on_cancel_transition(
+  const std::shared_ptr<rmw_request_id_t> header,
+  const std::shared_ptr<CancelTransitionSrv::Request> req) const
+{
+  if (auto state_hdl = state_manager_hdl_.lock()) {
+    state_hdl->cancel_transition(
+      req->timeout_sec,
+      std::bind(
+        &LifecycleNodeStateServicesManager::send_cancel_transition_resp, this,
+        std::placeholders::_1, std::placeholders::_2, std::placeholders::_3),
+      header); // register callback here
+  } else {
+    send_cancel_transition_resp("LifecycleNodeStateManager is not available.", false, header);
+  }
+
 }
 
 void

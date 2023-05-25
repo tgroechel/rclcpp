@@ -29,14 +29,51 @@ bool
 ChangeStateHandlerImpl::send_callback_resp(
   node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code)
 {
-  if (!response_sent_.load()) {
+  if (!transition_is_cancelled() && !response_sent()) {
     if (auto state_manager_hdl = state_manager_hdl_.lock()) {
-      state_manager_hdl->process_callback_resp(cb_return_code);
       response_sent_.store(true);
+      state_manager_hdl->process_callback_resp(cb_return_code);
       return true;
     }
   }
   return false;
+}
+
+bool
+ChangeStateHandlerImpl::handled_transition_cancel(bool success)
+{
+  if (transition_is_cancelled() && !response_sent()) {
+    if (auto state_manager_hdl = state_manager_hdl_.lock()) {
+      response_sent_.store(true);
+      state_manager_hdl->user_handled_transition_cancel(success);
+      return true;
+    }
+  }
+  return false;
+}
+
+bool
+ChangeStateHandlerImpl::transition_is_cancelled() const
+{
+  return transition_is_cancelled_.load();
+}
+
+bool
+ChangeStateHandlerImpl::response_sent() const
+{
+  return response_sent_.load();
+}
+
+void
+ChangeStateHandlerImpl::cancel_transition()
+{
+  transition_is_cancelled_.store(true);
+}
+
+void
+ChangeStateHandlerImpl::invalidate()
+{
+  response_sent_.store(true);
 }
 
 }  // namespace rclcpp_lifecycle
