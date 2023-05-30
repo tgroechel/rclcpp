@@ -25,7 +25,6 @@ namespace rclcpp_lifecycle
 void
 LifecycleNodeStateManager::init(
   const std::shared_ptr<rclcpp::node_interfaces::NodeBaseInterface> node_base_interface,
-  std::shared_ptr<rclcpp::node_interfaces::NodeTimersInterface> node_timers_interface,
   bool enable_communication_interface)
 {
   using ChangeStateSrv = lifecycle_msgs::srv::ChangeState;
@@ -34,7 +33,6 @@ LifecycleNodeStateManager::init(
   using GetAvailableTransitionsSrv = lifecycle_msgs::srv::GetAvailableTransitions;
 
   node_base_interface_ = node_base_interface;
-  node_timers_interface_ = node_timers_interface;
 
   rcl_node_t * node_handle = node_base_interface_->get_rcl_node_handle();
   const rcl_node_options_t * node_options =
@@ -271,7 +269,6 @@ LifecycleNodeStateManager::is_cancelling_transition() const
 
 void
 LifecycleNodeStateManager::cancel_transition(
-  float timeout_sec,
   std::function<void(std::string, bool, std::shared_ptr<rmw_request_id_t>)> callback,
   std::shared_ptr<rmw_request_id_t> header)
 {
@@ -295,23 +292,7 @@ LifecycleNodeStateManager::cancel_transition(
   is_cancelling_transition_.store(true);
   send_cancel_transition_resp_cb_ = callback;
   cancel_transition_header_ = header;
-  user_handled_transition_cancel_.store(false);
   mark_transition_as_cancelled();
-
-  if (timeout_sec > 0) {
-    cancel_timer_ = rclcpp::create_wall_timer(
-      std::chrono::duration<double, std::chrono::milliseconds::period>(timeout_sec * 1000),
-      [this]() {
-        if (!user_handled_transition_cancel_.load() && is_cancelling_transition_.load()) {
-          finalize_cancel_transition("Cancel request timed out, user did not handle cancel", false);
-        }
-        cancel_timer_.reset();
-      },
-      node_base_interface_->get_default_callback_group(),
-      node_base_interface_.get(),
-      node_timers_interface_.get()
-    );
-  }
 }
 
 void
@@ -321,8 +302,6 @@ LifecycleNodeStateManager::user_handled_transition_cancel(bool success)
     RCUTILS_LOG_WARN("Received user handled cancel but not in a cancel transition");
     return;
   }
-  user_handled_transition_cancel_.store(true);
-  cancel_timer_.reset();
 
   if (success) {
     finalize_cancel_transition("", true);
@@ -570,7 +549,7 @@ LifecycleNodeStateManager::in_error_transition_state(
 bool
 LifecycleNodeStateManager::is_running_async_callback() const
 {
-  return change_state_hdl_ && !change_state_hdl_->response_sent();
+  return change_state_hdl_ && change_state_hdl_->is_executing();
 }
 
 void

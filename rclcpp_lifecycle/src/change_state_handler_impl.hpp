@@ -33,11 +33,11 @@ public:
   bool send_callback_resp(
     node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code) override;
 
-  bool handled_transition_cancel(bool success) override;
+  bool canceled(bool success) override;
 
-  bool transition_is_cancelled() const override;
+  bool is_canceling() const override;
 
-  bool response_sent() const override;
+  bool is_executing() const override;
 
   /**
    * @brief Marks this transition as cancelled. It is up to the user to check if the transition

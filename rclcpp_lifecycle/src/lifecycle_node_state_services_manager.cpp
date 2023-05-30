@@ -130,7 +130,7 @@ LifecycleNodeStateServicesManager::LifecycleNodeStateServicesManager(
       srv_cancel_transition_ =
         std::make_shared<rclcpp::Service<CancelTransitionSrv>>(
         node_base_interface->get_shared_rcl_node_handle(),
-        std::string(node_base_interface->get_name()) + "/cancel_transition",
+        std::string(node_base_interface->get_fully_qualified_name()) + "/cancel_transition",
         any_cb,
         cancel_srv_options);
 
@@ -252,13 +252,13 @@ LifecycleNodeStateServicesManager::on_cancel_transition(
   const std::shared_ptr<rmw_request_id_t> header,
   const std::shared_ptr<CancelTransitionSrv::Request> req) const
 {
+  (void) req;
   if (auto state_hdl = state_manager_hdl_.lock()) {
     state_hdl->cancel_transition(
-      req->timeout_sec,
       std::bind(
         &LifecycleNodeStateServicesManager::send_cancel_transition_resp, this,
         std::placeholders::_1, std::placeholders::_2, std::placeholders::_3),
-      header); // register callback here
+      header);
   } else {
     send_cancel_transition_resp("LifecycleNodeStateManager is not available.", false, header);
   }

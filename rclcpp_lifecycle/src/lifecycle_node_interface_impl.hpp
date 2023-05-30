@@ -33,7 +33,6 @@
 #include "rclcpp/macros.hpp"
 #include "rclcpp/node_interfaces/node_base_interface.hpp"
 #include "rclcpp/node_interfaces/node_services_interface.hpp"
-#include "rclcpp/node_interfaces/node_timers_interface.hpp"
 
 #include "rclcpp_lifecycle/node_interfaces/lifecycle_node_interface.hpp"
 
@@ -52,8 +51,7 @@ class LifecycleNode::LifecycleNodeInterfaceImpl final
 public:
   LifecycleNodeInterfaceImpl(
     std::shared_ptr<rclcpp::node_interfaces::NodeBaseInterface> node_base_interface,
-    std::shared_ptr<rclcpp::node_interfaces::NodeServicesInterface> node_services_interface,
-    std::shared_ptr<rclcpp::node_interfaces::NodeTimersInterface> node_timers_interface);
+    std::shared_ptr<rclcpp::node_interfaces::NodeServicesInterface> node_services_interface);
 
   ~LifecycleNodeInterfaceImpl();
 

@@ -36,7 +36,6 @@
 
 #include "rclcpp/macros.hpp"
 #include "rclcpp/node_interfaces/node_base_interface.hpp"
-#include "rclcpp/node_interfaces/node_timers_interface.hpp"
 
 #include "rclcpp_lifecycle/node_interfaces/lifecycle_node_interface.hpp"
 
@@ -55,7 +54,6 @@ public:
 
   void init(
     const std::shared_ptr<rclcpp::node_interfaces::NodeBaseInterface> node_base_interface,
-    const std::shared_ptr<rclcpp::node_interfaces::NodeTimersInterface> node_timers_interface,
     bool enable_communication_interface);
 
   bool
@@ -93,7 +91,6 @@ public:
   bool is_cancelling_transition() const;
 
   void cancel_transition(
-    float timeout_sec,
     std::function<void(std::string, bool, std::shared_ptr<rmw_request_id_t>)> callback = nullptr,
     const std::shared_ptr<rmw_request_id_t> header = nullptr);
 
@@ -116,7 +113,6 @@ public:
 private:
   /*NodeInterfaces*/
   std::shared_ptr<rclcpp::node_interfaces::NodeBaseInterface> node_base_interface_;
-  std::shared_ptr<rclcpp::node_interfaces::NodeTimersInterface> node_timers_interface_;
 
   /*StateMachine & Callback Maps*/
   mutable std::recursive_mutex state_machine_mutex_;
@@ -174,12 +170,10 @@ private:
   bool in_error_transition_state(uint8_t) const;
 
   /*CancelTransition Members*/
-  std::shared_ptr<rclcpp::TimerBase> cancel_timer_;
   std::function<void(std::string, bool,
     std::shared_ptr<rmw_request_id_t>)> send_cancel_transition_resp_cb_;
   std::shared_ptr<rmw_request_id_t> cancel_transition_header_;
   std::atomic<bool> is_cancelling_transition_{false};
-  std::atomic<bool> user_handled_transition_cancel_{false};
 
   /*CancelTransition Helpers*/
   bool is_running_async_callback() const;

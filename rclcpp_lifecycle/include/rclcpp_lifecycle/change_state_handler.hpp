@@ -39,19 +39,19 @@ public:
    * \param[in] success true if the transition cancel request was successfully handled
    * \return true if the response was successfully sent to the state handler
   */
-  virtual bool handled_transition_cancel(bool success) = 0;
+  virtual bool canceled(bool success) = 0;
 
   /// Check to see if a send_callback_resp has been cancelled
   /**
    * @return true if response has been cancelled
    */
-  virtual bool transition_is_cancelled() const = 0;
+  virtual bool is_canceling() const = 0;
 
   // Check to see if the response has been sent
   /**
-   * @return true if response has been sent
+   * @return true if response has not been sent
    */
-  virtual bool response_sent() const = 0;
+  virtual bool is_executing() const = 0;
 
   virtual ~ChangeStateHandler() {}
 };

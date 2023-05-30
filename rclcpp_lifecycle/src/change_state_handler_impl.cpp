@@ -29,7 +29,7 @@ bool
 ChangeStateHandlerImpl::send_callback_resp(
   node_interfaces::LifecycleNodeInterface::CallbackReturn cb_return_code)
 {
-  if (!transition_is_cancelled() && !response_sent()) {
+  if (!is_canceling() && is_executing()) {
     if (auto state_manager_hdl = state_manager_hdl_.lock()) {
       response_sent_.store(true);
       state_manager_hdl->process_callback_resp(cb_return_code);
@@ -40,9 +40,9 @@ ChangeStateHandlerImpl::send_callback_resp(
 }
 
 bool
-ChangeStateHandlerImpl::handled_transition_cancel(bool success)
+ChangeStateHandlerImpl::canceled(bool success)
 {
-  if (transition_is_cancelled() && !response_sent()) {
+  if (is_canceling() && is_executing()) {
     if (auto state_manager_hdl = state_manager_hdl_.lock()) {
       response_sent_.store(true);
       state_manager_hdl->user_handled_transition_cancel(success);
@@ -53,15 +53,15 @@ ChangeStateHandlerImpl::handled_transition_cancel(bool success)
 }
 
 bool
-ChangeStateHandlerImpl::transition_is_cancelled() const
+ChangeStateHandlerImpl::is_canceling() const
 {
   return transition_is_cancelled_.load();
 }
 
 bool
-ChangeStateHandlerImpl::response_sent() const
+ChangeStateHandlerImpl::is_executing() const
 {
-  return response_sent_.load();
+  return !response_sent_.load();
 }
 
 void
